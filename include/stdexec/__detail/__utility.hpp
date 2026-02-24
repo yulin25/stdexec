@@ -261,7 +261,7 @@ namespace STDEXEC
     return __arg;
   }
 
-#if defined(__cpp_auto_cast) && (__cpp_auto_cast >= 2021'10L)
+#if defined(__cpp_auto_cast) && (__cpp_auto_cast >= 202110L)
 #  define STDEXEC_DECAY_COPY(...) auto(__VA_ARGS__)
 #else
 #  define STDEXEC_DECAY_COPY(...) (true ? (__VA_ARGS__) : STDEXEC::__decay_copy(__VA_ARGS__))
@@ -311,7 +311,7 @@ namespace STDEXEC
     static_assert(std::derived_from<__value_type, _CvInterface>,
                   "__polymorphic_downcast requires From to be a base class of To");
 
-#if defined(__cpp_rtti) && __cpp_rtti >= 1997'11L
+#if defined(__cpp_rtti) && __cpp_rtti >= 199711L
     STDEXEC_IF_NOT_CONSTEVAL
     {
       STDEXEC_ASSERT(dynamic_cast<__value_type*>(__from_ptr) != nullptr);
@@ -324,7 +324,7 @@ namespace STDEXEC
   {
 //////////////////////////////////////////////////////////////////////////////////////////
 // start_lifetime_as
-#if defined(__cpp_lib_start_lifetime_as) && __cpp_lib_start_lifetime_as >= 2022'07L
+#if defined(__cpp_lib_start_lifetime_as) && __cpp_lib_start_lifetime_as >= 202207L
     using std::start_lifetime_as;
 #else
     template <class _Ty>
@@ -344,7 +344,7 @@ namespace STDEXEC
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // unreachable
-#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 2022'02L
+#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
     using std::unreachable;
 #else
     [[noreturn]]
