@@ -355,12 +355,20 @@ namespace STDEXEC
         __stop_callback().__destroy();
       }
 
-      std::printf("opstate completed, &__errors_ = %p\n", static_cast<void*>(&this->__errors_));
+      // std::printf("opstate completed, &__errors_ = %p\n", static_cast<void*>(&this->__errors_));
 
       if (this->__errors_.index() != 0)
       {
         std::exchange(__coro_, {}).destroy();
-        __visit(STDEXEC::set_error, std::move(this->__errors_), static_cast<_Rcvr&&>(__rcvr_));
+        __visit(
+          [](auto&& rcvr, auto&& error)
+          {
+            if constexpr (!std::same_as<STDEXEC::__monostate, std::decay_t<decltype(error)>>)
+              STDEXEC::set_error(std::forward<decltype(rcvr)>(rcvr),
+                                 std::forward<decltype(error)>(error));
+          },
+          std::move(this->__errors_),
+          static_cast<_Rcvr&&>(__rcvr_));
       }
       else if constexpr (__same_as<_Ty, void>)
       {
