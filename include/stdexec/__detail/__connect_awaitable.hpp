@@ -39,7 +39,7 @@ namespace STDEXEC
   {
     template <class _Tp, class _Promise>
     concept __has_as_awaitable_member = requires(_Tp&& __t, _Promise& __promise) {
-      static_cast<_Tp &&>(__t).as_awaitable(__promise);
+      static_cast<_Tp&&>(__t).as_awaitable(__promise);
     };
 
     // A partial duplicate of with_awaitable_senders to avoid circular type dependencies
@@ -224,7 +224,7 @@ namespace STDEXEC
     }
 
     template <class _Awaitable, class _Receiver>
-#  if STDEXEC_GCC() && (STDEXEC_GCC_VERSION >= 12'00)
+#  if STDEXEC_GCC() && (STDEXEC_GCC_VERSION >= 1200)
     __attribute__((__used__))
 #  endif
     static auto

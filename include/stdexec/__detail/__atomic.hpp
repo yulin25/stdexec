@@ -64,7 +64,7 @@ namespace STDEXEC::__std
   using std::atomic_thread_fence;
   using std::atomic_signal_fence;
 
-#  if __cpp_lib_atomic_ref >= 2018'06L && !defined(STDEXEC_RELACY)
+#  if __cpp_lib_atomic_ref >= 201806L && !defined(STDEXEC_RELACY)
   using std::atomic_ref;
 #  else
   inline constexpr int __atomic_flag_map[] = {
@@ -120,7 +120,7 @@ namespace STDEXEC::__std
                                            : __order;
   }
 
-#if __cpp_lib_atomic_shared_ptr >= 2017'11L && !STDEXEC_HAS_CUDA_STD_ATOMIC()
+#if __cpp_lib_atomic_shared_ptr >= 201711L && !STDEXEC_HAS_CUDA_STD_ATOMIC()
   template <class _Ty>
   using __atomic_shared_ptr = std::atomic<std::shared_ptr<_Ty>>;
 #else

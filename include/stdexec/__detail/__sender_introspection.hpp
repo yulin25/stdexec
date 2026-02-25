@@ -70,7 +70,7 @@ namespace STDEXEC
     auto __get_desc_impl(__tuple<_Tag, _Data, _Child...> &&) -> __desc<_Tag, _Data, _Child...>;
 
 // Can structured bindings introduce a pack?
-#if defined(__cpp_structured_bindings) && __cpp_structured_bindings >= 2024'11L
+#if defined(__cpp_structured_bindings) && __cpp_structured_bindings >= 202411L
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
 

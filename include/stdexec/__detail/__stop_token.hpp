@@ -20,7 +20,7 @@
 
 #include "__concepts.hpp"
 
-#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 2019'11L
+#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
 #  include <stop_token>  // IWYU pragma: export
 #endif
 
@@ -34,7 +34,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     typename __check_type_alias_exists<_StopToken::template callback_type>;
   };
 
-#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 2019'11L
+#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
   template <>
   inline constexpr bool __has_stop_callback_v<std::stop_token> = true;
 #endif
@@ -46,7 +46,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     using __f = _Token::template callback_type<_Callback>;
   };
 
-#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 2019'11L
+#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
   template <>
   struct __stop_callback_for<std::stop_token>
   {
@@ -82,7 +82,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
    private:
     struct __callback_type
     {
-      constexpr explicit __callback_type(never_stop_token, STDEXEC::__ignore) noexcept { }
+      constexpr explicit __callback_type(never_stop_token, STDEXEC::__ignore) noexcept {}
     };
    public:
     template <class>

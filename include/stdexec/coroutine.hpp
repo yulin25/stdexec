@@ -18,7 +18,7 @@
 #include "__detail/__awaitable.hpp"  // IWYU pragma: export
 #include "__detail/__config.hpp"
 
-#if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION <= 19'39
+#if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION <= 1939
 namespace STDEXEC
 {
   // MSVCBUG https://developercommunity.visualstudio.com/t/destroy-coroutine-from-final_suspend-r/10096047

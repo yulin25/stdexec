@@ -17,7 +17,7 @@
 
 // IWYU pragma: always_keep
 
-#if __cplusplus < 2020'02L
+#if __cplusplus < 202002L
 #  if defined(_MSC_VER) && !defined(__clang__)
 #    error This library requires the use of C++20. Use /Zc:__cplusplus to enable __cplusplus conformance.
 #  else
@@ -114,8 +114,8 @@
 
 // Not all supported compilers have implemented the resolution of CWG 2428 yet.
 // https://cplusplus.github.io/CWG/issues/2428.html
-#if (STDEXEC_CLANG_VERSION >= 19'00) || (STDEXEC_GCC_VERSION >= 13'00)                             \
-  || (STDEXEC_MSVC_VERSION >= 19'44)
+#if (STDEXEC_CLANG_VERSION >= 1900) || (STDEXEC_GCC_VERSION >= 1300)                               \
+  || (STDEXEC_MSVC_VERSION >= 1944)
 #  define STDEXEC_DEPRECATE_CONCEPT(_MSG) [[deprecated(_MSG)]]
 #else
 #  define STDEXEC_DEPRECATE_CONCEPT(_MSG)
@@ -222,7 +222,7 @@ STDEXEC_NAMESPACE_STD_END
 // clang-format on
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#if __cpp_impl_coroutine >= 2019'02L && __cpp_lib_coroutine >= 2019'02L
+#if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
 #  include <coroutine>  // IWYU pragma: keep
 #  define STDEXEC_NO_STD_COROUTINES() 0
 namespace STDEXEC::__std
@@ -290,7 +290,7 @@ namespace STDEXEC::__std
 #elif STDEXEC_CLANG_CL()
 // clang-cl does not support [[no_unique_address]]: https://reviews.llvm.org/D110485
 // TODO: Find the version that started supporting [[msvc::no_unique_address]]
-#  if STDEXEC_CLANG_VERSION < 18'01
+#  if STDEXEC_CLANG_VERSION < 1801
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
 #  else
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) [[msvc::no_unique_address]]
@@ -411,7 +411,7 @@ namespace STDEXEC::__std
 #  define STDEXEC_IS_TRIVIALLY_COPYABLE(...) std::is_trivially_copyable_v<__VA_ARGS__>
 #endif
 
-#if STDEXEC_HAS_BUILTIN(__is_base_of) || (STDEXEC_MSVC_VERSION >= 19'14)
+#if STDEXEC_HAS_BUILTIN(__is_base_of) || (STDEXEC_MSVC_VERSION >= 1914)
 #  define STDEXEC_IS_BASE_OF(...) __is_base_of(__VA_ARGS__)
 #else
 #  define STDEXEC_IS_BASE_OF(...) std::is_base_of_v<__VA_ARGS__>
@@ -508,7 +508,7 @@ namespace STDEXEC
   inline constexpr bool __same_as_v<_Ap, _Ap> = true;
 }  // namespace STDEXEC
 
-#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 2022'02L
+#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
 #  define STDEXEC_UNREACHABLE() std::unreachable()
 #elif STDEXEC_HAS_BUILTIN(__builtin_unreachable)
 #  define STDEXEC_UNREACHABLE() __builtin_unreachable()
@@ -519,7 +519,7 @@ namespace STDEXEC
 #endif
 
 // Before gcc-12, gcc really didn't like tuples or variants of immovable types
-#if STDEXEC_GCC() && (STDEXEC_GCC_VERSION < 12'00)
+#if STDEXEC_GCC() && (STDEXEC_GCC_VERSION < 1200)
 #  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
 #else
 #  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
@@ -550,7 +550,7 @@ namespace STDEXEC
 // available. Pack indexing is disabled for clang < 20 because of:
 // https://github.com/llvm/llvm-project/issues/116105
 #if defined(__cpp_pack_indexing) && !STDEXEC_NVCC()                                                \
-  && !(STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 20'00)
+  && !(STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 2000)
 #  define STDEXEC_NO_STD_PACK_INDEXING() 0
 #else  // ^^^ has pack indexing ^^^ / vvv no pack indexing vvv
 #  define STDEXEC_NO_STD_PACK_INDEXING() 1
@@ -564,39 +564,39 @@ namespace STDEXEC
 
 // Before clang-16, clang did not like libstdc++'s ranges implementation
 #if __has_include(<ranges>) && \
-  (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 2019'11L) && \
-  (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 16'00 || defined(_LIBCPP_VERSION))
+  (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L) && \
+  (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 1600 || defined(_LIBCPP_VERSION))
 #  define STDEXEC_HAS_STD_RANGES() 1
 #else
 #  define STDEXEC_HAS_STD_RANGES() 0
 #endif
 
 #if __has_include(<memory_resource>) && \
-  (defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 2016'03L)
+  (defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 201603L)
 #  define STDEXEC_HAS_STD_MEMORY_RESOURCE() 1
 #else
 #  define STDEXEC_HAS_STD_MEMORY_RESOURCE() 0
 #endif
 
-#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 2016'03L
+#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 201603L
 #  define STDEXEC_HAS_EXECUTION_POLICY() 1
 #else
 #  define STDEXEC_HAS_EXECUTION_POLICY() 0
 #endif
 
-#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 2019'02L
+#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 201902L
 #  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 1
 #else
 #  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 0
 #endif
 
-#if defined(__cpp_lib_parallel_algorithm) && __cpp_lib_parallel_algorithm >= 2016'03L
+#if defined(__cpp_lib_parallel_algorithm) && __cpp_lib_parallel_algorithm >= 201603L
 #  define STDEXEC_HAS_PARALLEL_ALGORITHMS() 1
 #else
 #  define STDEXEC_HAS_PARALLEL_ALGORITHMS() 0
 #endif
 
-#if defined(__cpp_if_consteval) && __cpp_if_consteval >= 2021'06L
+#if defined(__cpp_if_consteval) && __cpp_if_consteval >= 202106L
 #  define STDEXEC_IF_CONSTEVAL     if consteval
 #  define STDEXEC_IF_NOT_CONSTEVAL if !consteval
 #else
@@ -626,13 +626,13 @@ namespace STDEXEC
   }
 
 // GCC 13 implements lexical friendship, but it is incomplete. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111018
-#if STDEXEC_CLANG()  // || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 13'00)
+#if STDEXEC_CLANG()  // || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 1300)
 #  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 1
 #else
 #  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 0
 #endif
 
-#if defined(__cpp_explicit_this_parameter) && (__cpp_explicit_this_parameter >= 2021'10L)
+#if defined(__cpp_explicit_this_parameter) && (__cpp_explicit_this_parameter >= 202110L)
 #  define STDEXEC_HAS_STD_EXPLICIT_THIS() 1
 #else
 #  define STDEXEC_HAS_STD_EXPLICIT_THIS() 0
@@ -654,7 +654,7 @@ namespace STDEXEC
 #  define STDEXEC_NO_STD_EXCEPTIONS() (__EXCEPTIONS == 0)
 #endif
 
-#if defined(__cpp_constexpr_exceptions) && __cpp_constexpr_exceptions >= 2024'11L
+#if defined(__cpp_constexpr_exceptions) && __cpp_constexpr_exceptions >= 202411L
 #  if !STDEXEC_NO_STD_EXCEPTIONS()
 // https://wg21.link/p3068
 #    define STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS() 0
@@ -830,7 +830,7 @@ namespace STDEXEC
 #  define STDEXEC_PRETTY_FUNCTION() __PRETTY_FUNCTION__
 #endif
 
-#if __cplusplus >= 2022'11L
+#if __cplusplus >= 202211L
 #  define STDEXEC_CONSTEXPR_CXX23        constexpr
 #  define STDEXEC_STATIC_CONSTEXPR_LOCAL static constexpr
 #else
