@@ -115,8 +115,9 @@ namespace STDEXEC
   template <class _CPO = void>
   struct get_completion_domain_t;
   template <__completion_tag _CPO>
-  struct get_completion_behavior_t;
+  struct __get_completion_behavior_t;
   struct get_domain_t;
+  struct get_await_completion_adaptor_t;
 
   struct __debug_env_t;
 
@@ -127,8 +128,9 @@ namespace STDEXEC
   template <__completion_tag _CPO>
   extern get_completion_scheduler_t<_CPO> const get_completion_scheduler;
   template <class _CPO = void>
-  extern get_completion_domain_t<_CPO> const get_completion_domain;
-  extern get_domain_t const                  get_domain;
+  extern get_completion_domain_t<_CPO> const  get_completion_domain;
+  extern get_domain_t const                   get_domain;
+  extern get_await_completion_adaptor_t const get_await_completion_adaptor;
 
   template <class _Env>
   concept __is_debug_env = __callable<__debug_env_t, _Env>;
@@ -148,7 +150,7 @@ namespace STDEXEC
 
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-  constexpr auto get_completion_behavior() noexcept;
+  constexpr auto __get_completion_behavior() noexcept;
 
   template <class _Env>
   using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
@@ -170,7 +172,7 @@ namespace STDEXEC
 
   using __cmplsigs::get_completion_signatures_t;
 
-#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
   template <class... _What, class... _Values>
   consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>;

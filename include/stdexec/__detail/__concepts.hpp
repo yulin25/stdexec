@@ -25,14 +25,7 @@
 #include <utility>  // IWYU pragma: keep for std::swap
 #include <version>
 
-// Perhaps the stdlib lacks support for concepts though:
-#if __has_include(<concepts>) && __cpp_lib_concepts >= 202002L
-#  define STDEXEC_HAS_STD_CONCEPTS_HEADER() 1
-#else
-#  define STDEXEC_HAS_STD_CONCEPTS_HEADER() 0
-#endif
-
-#if STDEXEC_HAS_STD_CONCEPTS_HEADER()
+#if !STDEXEC_NO_STDCPP_CONCEPTS_HEADER()
 #  include <concepts>
 #else
 #  include <type_traits>
@@ -40,7 +33,6 @@
 
 namespace STDEXEC
 {
-  //////////////////////////////////////////////////////////////////////////////////////////////////
   template <class _Fun, class... _As>
   concept __callable = requires(_Fun &&__fun, _As &&...__as) {
     static_cast<_Fun &&>(__fun)(static_cast<_As &&>(__as)...);
@@ -51,7 +43,6 @@ namespace STDEXEC
     { static_cast<_Fun &&>(__fun)(static_cast<_As &&>(__as)...) } noexcept;
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
   template <class...>
   struct __mlist;
 
@@ -60,7 +51,6 @@ namespace STDEXEC
     typename __mlist<_Ts...>;  // NOLINT
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
   template <class _Ap, class _Bp>
   concept __same_as = STDEXEC_IS_SAME(_Ap, _Bp);
 
@@ -112,7 +102,7 @@ namespace STDEXEC
     template <class _Ap, class _Bp>
     concept same_as = __same_as<_Ap, _Bp> && __same_as<_Bp, _Ap>;
 
-#if STDEXEC_HAS_STD_CONCEPTS_HEADER()
+#if !STDEXEC_NO_STDCPP_CONCEPTS_HEADER()
 
     using std::integral;
     using std::derived_from;
@@ -163,7 +153,6 @@ namespace STDEXEC
 
   namespace __std
   {
-    //////////////////////////////////////////////////////////////////////////////////////////////////
     // Avoid using libstdc++'s object concepts because they instantiate a
     // LOT of templates.
 

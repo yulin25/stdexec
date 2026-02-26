@@ -110,7 +110,7 @@ namespace STDEXEC
     template <class _Sender, class... _Env>
     using __legacy_static_member_result_t =       //
       decltype(STDEXEC_REMOVE_REFERENCE(_Sender)  //
-               ::static_get_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
+               ::__static_get_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
 
     template <class _Sender>
     using __legacy_member_alias_t = STDEXEC_REMOVE_REFERENCE(_Sender)::completion_signatures;
@@ -125,7 +125,7 @@ namespace STDEXEC
     concept __with_legacy_static_member = requires(__declfn_t<_Sender &&> __sndr,
                                                    __declfn_t<_Env &&>... __env) {
       STDEXEC_REMOVE_REFERENCE(_Sender)
-      ::static_get_completion_signatures(__sndr(), __env()...);
+      ::__static_get_completion_signatures(__sndr(), __env()...);
     };
 
     // [WAR]: see nvbugs#5813160
@@ -317,7 +317,7 @@ namespace STDEXEC
                                               __fwd_env_t<_Env>...>();
   }
 
-#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
   template <class _Sender>
   concept __is_dependent_sender =
     __std::derived_from<__completion_signatures_of_t<_Sender>, dependent_sender_error>;

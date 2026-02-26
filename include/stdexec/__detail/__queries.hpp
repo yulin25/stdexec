@@ -28,6 +28,25 @@ namespace STDEXEC
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // [exec.queries]
 
+  // [exec.get.await.adapt], see https://eel.is/c++draft/exec#get.await.adapt
+  struct get_await_completion_adaptor_t : __query<get_await_completion_adaptor_t>
+  {
+    template <class _Env>
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    static constexpr void __validate() noexcept
+    {
+      static_assert(STDEXEC::__nothrow_callable<get_await_completion_adaptor_t, _Env const &>);
+    }
+
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    static consteval auto query(forwarding_query_t) noexcept -> bool
+    {
+      return true;
+    }
+  };
+
+  inline constexpr get_await_completion_adaptor_t get_await_completion_adaptor{};
+
   // NOT TO SPEC:
   struct __is_scheduler_affine_t
   {
@@ -111,9 +130,9 @@ namespace STDEXEC
 
     template <class _Tag, class... _Env>
     [[nodiscard]]
-    constexpr auto query(get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
+    constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
     {
-      return get_completion_behavior<_Tag, _Sender, _Env...>();
+      return __get_completion_behavior<_Tag, _Sender, _Env...>();
     }
 
     template <__forwarding_query _Query, class... _Args>
