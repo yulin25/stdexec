@@ -182,13 +182,12 @@ namespace experimental::execution
         constexpr auto nothrow = noexcept(
           self->_ops.template __emplace_from<__nth + 1>(STDEXEC::connect,
                                                         std::move(sndr),
-                                                        _rcvr_t < Remaining == 1 > {self}));
+                                                        _rcvr_t<Remaining == 1>{self}));
         STDEXEC_TRY
         {
           auto& op = self->_ops.template __emplace_from<__nth + 1>(STDEXEC::connect,
                                                                    std::move(sndr),
-                                                                   _rcvr_t < Remaining
-                                                                     == 1 > {self});
+                                                                   _rcvr_t<Remaining == 1>{self});
           if constexpr (Remaining > 1)
           {
             self->_start_next_ = &_start_next<Remaining - 1>;
@@ -226,15 +225,25 @@ namespace experimental::execution
     // The completions of the sequence sender are the error and stopped completions of all the
     // child senders plus the value completions of the last child sender.
     template <class... Env>
-    struct _completions_fn;
-
-    template <class Env>
-    struct _completions_fn<Env>
+      requires(sizeof...(Env) <= 1)
+    struct _completions_fn
     {
+      template <class...>
+      struct get_env;
+
+      template <>
+      struct get_env<> : std::type_identity<STDEXEC::env<>>
+      {};
+
+      template <class E>
+      struct get_env<E> : std::type_identity<E>
+      {};
+
+      using receiver_archetype_t = STDEXEC::__receiver_archetype<typename get_env<Env...>::type>;
+
       template <bool First, bool AddExceptionPtr, class Sender>
       static constexpr bool _add_exception_ptr =
-        AddExceptionPtr
-        || !(First || STDEXEC::__nothrow_connectable<Sender, STDEXEC::__receiver_archetype<Env>>);
+        AddExceptionPtr || !(First || STDEXEC::__nothrow_connectable<Sender, receiver_archetype_t>);
 
       // When folding left, the first sender folded will be the last sender in the list.
       // For this case we want to include the value completions; otherwise, we want to
@@ -246,7 +255,7 @@ namespace experimental::execution
       struct _fold_left<First, AddExceptionPtr, Head, Tail...>
       {
         using __t = STDEXEC::__gather_completion_signatures_t<
-          STDEXEC::__completion_signatures_of_t<Head, Env>,
+          STDEXEC::__completion_signatures_of_t<Head, Env...>,
           STDEXEC::set_value_t,
           STDEXEC::__mconst<STDEXEC::completion_signatures<>>::__f,
           STDEXEC::__cmplsigs::__default_completion,
@@ -263,7 +272,7 @@ namespace experimental::execution
             _add_exception_ptr<First, AddExceptionPtr, Head>,
             STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr)>,
             STDEXEC::completion_signatures<>>,
-          STDEXEC::__completion_signatures_of_t<Head, Env>>;
+          STDEXEC::__completion_signatures_of_t<Head, Env...>>;
       };
 
       template <class... Sender>
@@ -284,11 +293,7 @@ namespace experimental::execution
       STDEXEC_ATTRIBUTE(host, device)
       static consteval auto get_completion_signatures()
       {
-        if constexpr (sizeof...(Env) == 0)
-        {
-          return STDEXEC::__dependent_sender<Self>();
-        }
-        else if constexpr (STDEXEC::__decay_copyable<Self>)
+        if constexpr (STDEXEC::__decay_copyable<Self>)
         {
           return _completions_t<Self, Env...>{};
         }
