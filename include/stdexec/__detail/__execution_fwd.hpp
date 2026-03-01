@@ -123,7 +123,8 @@ namespace STDEXEC
   struct __get_completion_behavior_t;
   struct get_domain_t;
   struct get_await_completion_adaptor_t;
-  struct get_completion_transformer_t;
+  struct get_result_picker_t;
+  struct get_error_picker_t;
 
   struct __debug_env_t;
 
@@ -137,7 +138,8 @@ namespace STDEXEC
   extern get_completion_domain_t<_CPO> const  get_completion_domain;
   extern get_domain_t const                   get_domain;
   extern get_await_completion_adaptor_t const get_await_completion_adaptor;
-  extern get_completion_transformer_t const   get_completion_transformer;
+  extern get_result_picker_t const            get_result_picker;
+  extern get_error_picker_t const             get_error_picker;
 
   template <class _Env>
   concept __is_debug_env = __callable<__debug_env_t, _Env>;
@@ -245,31 +247,49 @@ namespace STDEXEC
   extern bulk_unchunked_t const bulk_unchunked;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct just_result_t;
+  extern just_result_t const just_result;
+
   struct just_t;
   extern just_t const just;
 
   struct just_error_t;
   extern just_error_t const just_error;
 
+  struct just_exception_t;
+  extern just_exception_t const just_exception;
+
   struct just_stopped_t;
   extern just_stopped_t const just_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  // struct upon_result_t;
+  // extern upon_result_t const upon_result;
+
   struct then_t;
   extern then_t const then;
 
   struct upon_error_t;
   extern upon_error_t const upon_error;
 
+  struct upon_exception_t;
+  extern upon_exception_t const upon_exception;
+
   struct upon_stopped_t;
   extern upon_stopped_t const upon_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct let_result_t;
+  extern let_result_t const let_result;
+
   struct let_value_t;
   extern let_value_t const let_value;
 
   struct let_error_t;
   extern let_error_t const let_error;
+
+  struct let_exception_t;
+  extern let_exception_t const let_exception;
 
   struct let_stopped_t;
   extern let_stopped_t const let_stopped;
