@@ -34,9 +34,13 @@ namespace STDEXEC
     template <class _Sig>
     inline constexpr bool __is_compl_sig = false;
     template <class... _Args>
+    inline constexpr bool __is_compl_sig<set_result_t(_Args...)> = true;
+    template <class... _Args>
     inline constexpr bool __is_compl_sig<set_value_t(_Args...)> = true;
     template <class _Error>
     inline constexpr bool __is_compl_sig<set_error_t(_Error)> = true;
+    template <class _Error>
+    inline constexpr bool __is_compl_sig<set_exception_t(_Error)> = true;
     template <>
     inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
   }  // namespace __cmplsigs
@@ -143,26 +147,45 @@ namespace STDEXEC
     // completion_signatures<Sigs...>::__partitioned nested struct contains an alias to a
     // __partitions specialization. If the cache is never accessed, it is never
     // instantiated.
-    template <class _ValueTuplesList = __mlist<>,
-              class _ErrorsList      = __mlist<>,
-              class _StoppedList     = __mlist<>>
+    template <class _ResultTuplesList = __mlist<>,
+              class _ValueTuplesList  = __mlist<>,
+              class _ErrorsList       = __mlist<>,
+              class _ExceptionsList   = __mlist<>,
+              class _StoppedList      = __mlist<>>
     struct __partitions;
 
-    template <class... _ValueTuples, class... _Errors, class... _Stopped>
-    struct __partitions<__mlist<_ValueTuples...>, __mlist<_Errors...>, __mlist<_Stopped...>>
+    template <class... _ResultTuples,
+              class... _ValueTuples,
+              class... _Errors,
+              class... _Exceptions,
+              class... _Stopped>
+    struct __partitions<__mlist<_ResultTuples...>,
+                        __mlist<_ValueTuples...>,
+                        __mlist<_Errors...>,
+                        __mlist<_Exceptions...>,
+                        __mlist<_Stopped...>>
     {
+      template <class _Tuple, class _Variant>
+      using __result_types = _Variant::template __f<__mapply<_Tuple, _ResultTuples>...>;
+
       template <class _Tuple, class _Variant>
       using __value_types = _Variant::template __f<__mapply<_Tuple, _ValueTuples>...>;
 
       template <class _Variant, class _Transform = __q1<__midentity>>
       using __error_types = _Variant::template __f<typename _Transform::template __f<_Errors>...>;
 
+      template <class _Variant, class _Transform = __q1<__midentity>>
+      using __exception_types =
+        _Variant::template __f<typename _Transform::template __f<_Exceptions>...>;
+
       template <class _Variant, class _Type = set_stopped_t()>
       using __stopped_types = _Variant::template __f<__msecond<_Stopped, _Type>...>;
 
-      using __count_values  = __msize_t<sizeof...(_ValueTuples)>;
-      using __count_errors  = __msize_t<sizeof...(_Errors)>;
-      using __count_stopped = __msize_t<sizeof...(_Stopped)>;
+      using __count_results    = __msize_t<sizeof...(_ResultTuples)>;
+      using __count_values     = __msize_t<sizeof...(_ValueTuples)>;
+      using __count_errors     = __msize_t<sizeof...(_Errors)>;
+      using __count_exceptions = __msize_t<sizeof...(_Exceptions)>;
+      using __count_stopped    = __msize_t<sizeof...(_Stopped)>;
 
       struct __decay_copyable
       {
@@ -185,6 +208,11 @@ namespace STDEXEC
       {
         // These aliases are placed in a separate struct to avoid computing them
         // if they are not needed.
+        struct __results
+        {
+          static constexpr bool value =
+            (__mapply_q<__nothrow_decay_copyable_t, _ResultTuples>::value && ...);
+        };
         struct __values
         {
           static constexpr bool value = (__mapply_q<__nothrow_decay_copyable_t, _ValueTuples>::value
@@ -194,7 +222,11 @@ namespace STDEXEC
         {
           static constexpr bool value = STDEXEC::__nothrow_decay_copyable<_Errors...>;
         };
-        struct __all : __mand_t<__values, __errors>
+        struct __exceptions
+        {
+          static constexpr bool value = STDEXEC::__nothrow_decay_copyable<_Exceptions...>;
+        };
+        struct __all : __mand_t<__results, __values, __errors, __exceptions>
         {};
       };
     };
@@ -203,29 +235,89 @@ namespace STDEXEC
     struct __partitioned_fold_fn;
 
     template <>
+    struct __partitioned_fold_fn<set_result_t>
+    {
+      template <class... _ResultTuples,
+                class... _ValueTuples,
+                class _Errors,
+                class _Exceptions,
+                class _Stopped,
+                class _Results>
+      constexpr auto operator()(__partitions<__mlist<_ResultTuples...>,
+                                             __mlist<_ValueTuples...>,
+                                             _Errors,
+                                             _Exceptions,
+                                             _Stopped>&,
+                                __undefined<_Results>&) const
+        -> __undefined<__partitions<__mlist<_ResultTuples..., _Results>,
+                                    __mlist<_ValueTuples...>,
+                                    _Errors,
+                                    _Exceptions,
+                                    _Stopped>>&;
+    };
+
+    template <>
     struct __partitioned_fold_fn<set_value_t>
     {
-      template <class... _ValueTuples, class _Errors, class _Stopped, class _Values>
-      constexpr auto operator()(__partitions<__mlist<_ValueTuples...>, _Errors, _Stopped>&,
+      template <class... _ResultTuples,
+                class... _ValueTuples,
+                class _Errors,
+                class _Exceptions,
+                class _Stopped,
+                class _Values>
+      constexpr auto operator()(__partitions<__mlist<_ResultTuples...>,
+                                             __mlist<_ValueTuples...>,
+                                             _Errors,
+                                             _Exceptions,
+                                             _Stopped>&,
                                 __undefined<_Values>&) const
-        -> __undefined<__partitions<__mlist<_ValueTuples..., _Values>, _Errors, _Stopped>>&;
+        -> __undefined<__partitions<__mlist<_ResultTuples...>,
+                                    __mlist<_ValueTuples..., _Values>,
+                                    _Errors,
+                                    _Exceptions,
+                                    _Stopped>>&;
     };
 
     template <>
     struct __partitioned_fold_fn<set_error_t>
     {
-      template <class _Values, class... _Errors, class _Stopped, class _Error>
-      constexpr auto operator()(__partitions<_Values, __mlist<_Errors...>, _Stopped>&,
-                                __undefined<__mlist<_Error>>&) const
-        -> __undefined<__partitions<_Values, __mlist<_Errors..., _Error>, _Stopped>>&;
+      template <class _Results,
+                class _Values,
+                class... _Errors,
+                class _Exceptions,
+                class _Stopped,
+                class _Error>
+      constexpr auto
+      operator()(__partitions<_Results, _Values, __mlist<_Errors...>, _Exceptions, _Stopped>&,
+                 __undefined<__mlist<_Error>>&) const
+        -> __undefined<
+          __partitions<_Results, _Values, __mlist<_Errors..., _Error>, _Exceptions, _Stopped>>&;
+    };
+
+    template <>
+    struct __partitioned_fold_fn<set_exception_t>
+    {
+      template <class _Results,
+                class _Values,
+                class _Errors,
+                class... _Exceptions,
+                class _Stopped,
+                class _Exception>
+      constexpr auto
+      operator()(__partitions<_Results, _Values, _Errors, __mlist<_Exceptions...>, _Stopped>&,
+                 __undefined<__mlist<_Exception>>&) const
+        -> __undefined<
+          __partitions<_Results, _Values, _Errors, __mlist<_Exceptions..., _Exception>, _Stopped>>&;
     };
 
     template <>
     struct __partitioned_fold_fn<set_stopped_t>
     {
-      template <class _Values, class _Errors, class _Stopped>
-      constexpr auto operator()(__partitions<_Values, _Errors, _Stopped>&, __ignore) const
-        -> __undefined<__partitions<_Values, _Errors, __mlist<set_stopped_t()>>>&;
+      template <class _Results, class _Values, class _Errors, class _Exceptions, class _Stopped>
+      constexpr auto
+      operator()(__partitions<_Results, _Values, _Errors, _Exceptions, _Stopped>&, __ignore) const
+        -> __undefined<
+          __partitions<_Results, _Values, _Errors, _Exceptions, __mlist<set_stopped_t()>>>&;
     };
 
     // The following overload of binary operator* is used to build up the cache of completion
@@ -256,12 +348,22 @@ namespace STDEXEC
   template <class _Sigs,
             class _Tuple   = __qq<__decayed_std_tuple>,
             class _Variant = __qq<__std_variant>>
+  using __result_types_t =
+    __cmplsigs::__partitions_of_t<_Sigs>::template __result_types<_Tuple, _Variant>;
+
+  template <class _Sigs,
+            class _Tuple   = __qq<__decayed_std_tuple>,
+            class _Variant = __qq<__std_variant>>
   using __value_types_t =
     __cmplsigs::__partitions_of_t<_Sigs>::template __value_types<_Tuple, _Variant>;
 
   template <class _Sigs, class _Variant = __qq<__std_variant>, class _Transform = __q1<__midentity>>
   using __error_types_t =
     __cmplsigs::__partitions_of_t<_Sigs>::template __error_types<_Variant, _Transform>;
+
+  template <class _Sigs, class _Variant = __qq<__std_variant>, class _Transform = __q1<__midentity>>
+  using __exception_types_t =
+    __cmplsigs::__partitions_of_t<_Sigs>::template __exception_types<_Variant, _Transform>;
 
   template <class _Sigs, class _Variant, class _Type = __fn_t<set_stopped_t>>
   using __stopped_types_t =
@@ -326,9 +428,13 @@ namespace STDEXEC
   //!
   //! The `completion_signatures` class template is used to describe the possible ways a
   //! sender may complete. Each signature is a function type of the form
-  //! `set_value_t(Ts...)`, `set_error_t(E)`, or `set_stopped_t()`. This type provides
-  //! compile-time utilities for querying, combining, and transforming sets of completion
-  //! signatures.
+  //! `set_result_t(Ts...)`,
+  //! `set_value_t(Ts...)`,
+  //! `set_error_t(E)`,
+  //! `set_exception_t(E)`,
+  //! or `set_stopped_t()`.
+  //! This type provides compile-time utilities for querying, combining, and transforming
+  //! sets of completion signatures.
   //!
   //! @tparam _Sigs... The completion signature types to include in this set.
   //!
@@ -376,7 +482,11 @@ namespace STDEXEC
     [[nodiscard]]
     static consteval auto __count(_Tag) noexcept -> std::size_t
     {
-      if constexpr (_Tag{} == set_value)
+      if constexpr (_Tag{} == set_result)
+      {
+        return __partitioned::__t::__count_results::value;
+      }
+      else if constexpr (_Tag{} == set_value)
       {
         return __partitioned::__t::__count_values::value;
       }
@@ -384,11 +494,24 @@ namespace STDEXEC
       {
         return __partitioned::__t::__count_errors::value;
       }
+      else if constexpr (_Tag{} == set_exception)
+      {
+        return __partitioned::__t::__count_exceptions::value;
+      }
       else
       {
         return __partitioned::__t::__count_stopped::value;
       }
     }
+
+    static_assert(__count(set_result) * __count(set_value) == 0,
+                  "The set_result and set_value completion signatures are mutually exclusive.");
+    static_assert(__count(set_result) * __count(set_error) == 0,
+                  "The set_result and set_error completion signatures are mutually exclusive.");
+    static_assert(__count(set_value) * __count(set_exception) == 0,
+                  "The set_value and set_exception completion signatures are mutually exclusive.");
+    static_assert(__count(set_error) * __count(set_exception) == 0,
+                  "The set_error and set_exception completion signatures are mutually exclusive.");
 
     //! @brief Checks if the set contains the given signature.
     //! @tparam _Sig The signature type to check.
@@ -444,7 +567,13 @@ namespace STDEXEC
     [[nodiscard]]
     static consteval auto __select(_Tag) noexcept
     {
-      if constexpr (_Tag{} == set_value)
+      if constexpr (_Tag{} == set_result)
+      {
+        return __result_types_t<completion_signatures,
+                                __qf<set_result_t>,
+                                __qq<STDEXEC::completion_signatures>>{};
+      }
+      else if constexpr (_Tag{} == set_value)
       {
         return __value_types_t<completion_signatures,
                                __qf<set_value_t>,
@@ -455,6 +584,12 @@ namespace STDEXEC
         return __error_types_t<completion_signatures,
                                __qq<STDEXEC::completion_signatures>,
                                __qf<set_error_t>>{};
+      }
+      else if constexpr (_Tag{} == set_exception)
+      {
+        return __exception_types_t<completion_signatures,
+                                   __qq<STDEXEC::completion_signatures>,
+                                   __qf<set_exception_t>>{};
       }
       else
       {
@@ -493,6 +628,13 @@ namespace STDEXEC
     struct __gather_sigs_fn;
 
     template <>
+    struct __gather_sigs_fn<set_result_t>
+    {
+      template <class _Sigs, class _Tuple, class _Variant>
+      using __f = __result_types_t<_Sigs, _Tuple, _Variant>;
+    };
+
+    template <>
     struct __gather_sigs_fn<set_value_t>
     {
       template <class _Sigs, class _Tuple, class _Variant>
@@ -504,6 +646,13 @@ namespace STDEXEC
     {
       template <class _Sigs, class _Tuple, class _Variant>
       using __f = __error_types_t<_Sigs, _Variant, _Tuple>;
+    };
+
+    template <>
+    struct __gather_sigs_fn<set_exception_t>
+    {
+      template <class _Sigs, class _Tuple, class _Variant>
+      using __f = __exception_types_t<_Sigs, _Variant, _Tuple>;
     };
 
     template <>
@@ -524,12 +673,19 @@ namespace STDEXEC
     inline constexpr std::size_t __count_of = 0;
 
     template <class _Sigs>
+    inline constexpr std::size_t __count_of<set_result_t, _Sigs> =
+      __cmplsigs::__partitions_of_t<_Sigs>::__count_results::value;
+
+    template <class _Sigs>
     inline constexpr std::size_t __count_of<set_value_t, _Sigs> =
       __cmplsigs::__partitions_of_t<_Sigs>::__count_values::value;
 
     template <class _Sigs>
     inline constexpr std::size_t __count_of<set_error_t, _Sigs> =
       __cmplsigs::__partitions_of_t<_Sigs>::__count_errors::value;
+    template <class _Sigs>
+    inline constexpr std::size_t __count_of<set_exception_t, _Sigs> =
+      __cmplsigs::__partitions_of_t<_Sigs>::__count_exceptions::value;
     template <class _Sigs>
     inline constexpr std::size_t __count_of<set_stopped_t, _Sigs> =
       __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped::value;

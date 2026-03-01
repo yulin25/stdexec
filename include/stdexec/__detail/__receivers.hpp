@@ -30,8 +30,10 @@ namespace STDEXEC
 {
   enum class __disposition
   {
+    __result,
     __value,
     __error,
+    __exception,
     __stopped
   };
 
@@ -55,6 +57,16 @@ namespace STDEXEC
   template <class _Receiver, class... _As>
   concept __set_value_member = requires(_Receiver &&__rcvr, _As &&...__args) {
     static_cast<_Receiver &&>(__rcvr).set_value(static_cast<_As &&>(__args)...);
+  };
+
+  template <class _Receiver, class... _As>
+  concept __set_result_member = requires(_Receiver &&__rcvr, _As &&...__args) {
+    std::forward<_Receiver>(__rcvr).set_result(std::forward<_As>(__args)...);
+  };
+
+  struct set_result_t : __detail::__completion_tag<__disposition::__result>
+  {
+    //TODO
   };
 
   struct set_value_t : __detail::__completion_tag<__disposition::__value>
@@ -86,6 +98,22 @@ namespace STDEXEC
     {
       static_assert(__nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
       (void) __tag_invoke(*this, static_cast<_Receiver &&>(__rcvr), static_cast<_As &&>(__as)...);
+    }
+
+    // FIXME: require env.
+    template <class _Receiver, class... _As>
+      requires __set_result_member<_Receiver, _As...>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept
+    {
+      static_assert(noexcept(
+                      static_cast<_Receiver &&>(__rcvr).set_result(static_cast<_As &&>(__as)...)),
+                    "set_result member functions must be noexcept");
+      static_assert(__same_as<decltype(static_cast<_Receiver &&>(__rcvr).set_result(
+                                static_cast<_As &&>(__as)...)),
+                              void>,
+                    "set_result member functions must return void");
+      static_cast<_Receiver &&>(__rcvr).set_result(static_cast<_As &&>(__as)...);
     }
   };
 
@@ -125,6 +153,11 @@ namespace STDEXEC
       static_assert(__nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
       (void) __tag_invoke(*this, static_cast<_Receiver &&>(__rcvr), static_cast<_Error &&>(__err));
     }
+  };
+
+  struct set_exception_t : __detail::__completion_tag<__disposition::__exception>
+  {
+    //TODO
   };
 
   template <class _Receiver>

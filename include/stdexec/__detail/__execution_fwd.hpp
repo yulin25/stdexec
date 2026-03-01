@@ -68,13 +68,18 @@ namespace STDEXEC
   struct set_value_t;
   struct set_error_t;
   struct set_stopped_t;
+  struct set_result_t;
+  struct set_exception_t;
 
-  extern set_value_t const   set_value;
-  extern set_error_t const   set_error;
-  extern set_stopped_t const set_stopped;
+  extern set_value_t const     set_value;
+  extern set_error_t const     set_error;
+  extern set_stopped_t const   set_stopped;
+  extern set_result_t const    set_result;
+  extern set_exception_t const set_exception;
 
   template <class _Tag>
-  concept __completion_tag = __one_of<_Tag, set_value_t, set_error_t, set_stopped_t>;
+  concept __completion_tag =
+    __one_of<_Tag, set_value_t, set_error_t, set_stopped_t, set_result_t, set_exception_t>;
 
   template <class _Sender>
   extern bool const enable_receiver;
@@ -118,6 +123,7 @@ namespace STDEXEC
   struct __get_completion_behavior_t;
   struct get_domain_t;
   struct get_await_completion_adaptor_t;
+  struct get_completion_transformer_t;
 
   struct __debug_env_t;
 
@@ -131,6 +137,7 @@ namespace STDEXEC
   extern get_completion_domain_t<_CPO> const  get_completion_domain;
   extern get_domain_t const                   get_domain;
   extern get_await_completion_adaptor_t const get_await_completion_adaptor;
+  extern get_completion_transformer_t const   get_completion_transformer;
 
   template <class _Env>
   concept __is_debug_env = __callable<__debug_env_t, _Env>;
