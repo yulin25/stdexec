@@ -66,7 +66,39 @@ namespace STDEXEC
 
   struct set_result_t : __detail::__completion_tag<__disposition::__result>
   {
-    //TODO
+    template <class _Fn, class... _As>
+    using __f = __minvoke<_Fn, _As...>;
+
+    template <class _Receiver, class... _As>
+      requires __set_result_member<_Receiver, _As...>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept
+    {
+      static_assert(noexcept(
+                      static_cast<_Receiver &&>(__rcvr).set_result(static_cast<_As &&>(__as)...)),
+                    "set_result member functions must be noexcept");
+      static_assert(__same_as<decltype(static_cast<_Receiver &&>(__rcvr).set_result(
+                                static_cast<_As &&>(__as)...)),
+                              void>,
+                    "set_result member functions must return void");
+      static_cast<_Receiver &&>(__rcvr).set_result(static_cast<_As &&>(__as)...);
+    }
+
+    template <class _Receiver, class... _As>
+      requires __set_value_member<_Receiver, _As...>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept
+    {
+      // TODO: use result_picker
+      static_assert(noexcept(
+                      static_cast<_Receiver &&>(__rcvr).set_value(static_cast<_As &&>(__as)...)),
+                    "set_value member functions must be noexcept");
+      static_assert(__same_as<decltype(static_cast<_Receiver &&>(__rcvr).set_value(
+                                static_cast<_As &&>(__as)...)),
+                              void>,
+                    "set_value member functions must return void");
+      static_cast<_Receiver &&>(__rcvr).set_value(static_cast<_As &&>(__as)...);
+    }
   };
 
   struct set_value_t : __detail::__completion_tag<__disposition::__value>
@@ -100,7 +132,6 @@ namespace STDEXEC
       (void) __tag_invoke(*this, static_cast<_Receiver &&>(__rcvr), static_cast<_As &&>(__as)...);
     }
 
-    // FIXME: require env.
     template <class _Receiver, class... _As>
       requires __set_result_member<_Receiver, _As...>
     STDEXEC_ATTRIBUTE(host, device, always_inline)

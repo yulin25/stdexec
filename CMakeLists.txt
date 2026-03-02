@@ -210,8 +210,8 @@ include(GNUInstallDirs)
 
 target_link_libraries(stdexec INTERFACE Threads::Threads)
 
-# Use C++20 standard
-target_compile_features(stdexec INTERFACE cxx_std_20)
+# Use C++23 standard
+target_compile_features(stdexec INTERFACE cxx_std_23)
 
 # # Enable GPU compilation when using NVHPC compiler
 # target_compile_options(stdexec INTERFACE

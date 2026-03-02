@@ -77,7 +77,7 @@ set(stdexec_test_sources
 
 add_library(common_test_settings INTERFACE)
 set_target_properties(common_test_settings PROPERTIES
-    CXX_STANDARD 20
+    CXX_STANDARD 23
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
     MSVC_DEBUG_INFORMATION_FORMAT Embedded

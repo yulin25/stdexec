@@ -21,6 +21,7 @@
 #include "__completion_behavior.hpp"
 #include "__concepts.hpp"
 #include "__config.hpp"
+#include "__pickers.hpp"
 #include "__query.hpp"
 
 namespace STDEXEC
@@ -181,3 +182,42 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
   inline constexpr get_allocator_t get_allocator{};
 STDEXEC_P2300_NAMESPACE_END()
+
+namespace STDEXEC
+{
+  struct get_result_picker_t : STDEXEC::__query<get_result_picker_t, default_result_picker{}>
+  {
+    template <class _Env>
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    static constexpr void __validate() noexcept
+    {
+      static_assert(STDEXEC::__nothrow_callable<get_result_picker_t, _Env const &>);
+    }
+
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    static consteval auto query(forwarding_query_t) noexcept -> bool
+    {
+      return false;
+    }
+  };
+
+  inline constexpr get_result_picker_t get_result_picker;
+
+  struct get_error_picker_t : STDEXEC::__query<get_error_picker_t, default_error_picker{}>
+  {
+    template <class _Env>
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    static constexpr void __validate() noexcept
+    {
+      static_assert(STDEXEC::__nothrow_callable<get_error_picker_t, _Env const &>);
+    }
+
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    static consteval auto query(forwarding_query_t) noexcept -> bool
+    {
+      return false;
+    }
+  };
+
+  inline constexpr get_error_picker_t get_error_picker;
+}  // namespace STDEXEC
