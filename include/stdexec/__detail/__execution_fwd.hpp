@@ -123,8 +123,7 @@ namespace STDEXEC
   struct __get_completion_behavior_t;
   struct get_domain_t;
   struct get_await_completion_adaptor_t;
-  struct get_result_picker_t;
-  struct get_error_picker_t;
+  struct get_channel_mapper_t;
 
   struct __debug_env_t;
 
@@ -138,8 +137,7 @@ namespace STDEXEC
   extern get_completion_domain_t<_CPO> const  get_completion_domain;
   extern get_domain_t const                   get_domain;
   extern get_await_completion_adaptor_t const get_await_completion_adaptor;
-  extern get_result_picker_t const            get_result_picker;
-  extern get_error_picker_t const             get_error_picker;
+  extern get_channel_mapper_t const           get_channel_mapper;
 
   template <class _Env>
   concept __is_debug_env = __callable<__debug_env_t, _Env>;

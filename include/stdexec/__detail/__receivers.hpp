@@ -85,19 +85,11 @@ namespace STDEXEC
     }
 
     template <class _Receiver, class... _As>
-      requires __set_value_member<_Receiver, _As...>
+      requires(!__set_result_member<_Receiver, _As...>) && __set_value_member<_Receiver, _As...>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept
     {
-      // TODO: use result_picker
-      static_assert(noexcept(
-                      static_cast<_Receiver &&>(__rcvr).set_value(static_cast<_As &&>(__as)...)),
-                    "set_value member functions must be noexcept");
-      static_assert(__same_as<decltype(static_cast<_Receiver &&>(__rcvr).set_value(
-                                static_cast<_As &&>(__as)...)),
-                              void>,
-                    "set_value member functions must return void");
-      static_cast<_Receiver &&>(__rcvr).set_value(static_cast<_As &&>(__as)...);
+      STDEXEC::__pick_result(std::forward<_Receiver>(__rcvr), std::forward<_As>(__as)...);
     }
   };
 

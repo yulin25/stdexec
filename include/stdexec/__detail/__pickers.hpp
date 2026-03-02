@@ -10,6 +10,20 @@ namespace STDEXEC
   template <class _Picker, class... _As>
   concept __never_pick = requires(_Picker __fn) { requires !__fn.template operator()<_As...>(); };
 
+  template <class _ResultPicker, class... _Results>
+    requires(sizeof...(_Results) > 1)
+  constexpr auto __unpick_transform(_ResultPicker&& __result_picker, _Results&&... __results)
+  {}
+
+  template <class _Receiver, class _Picker, class... _Results>
+  constexpr void __pick_result(_Receiver&& __rcvr, _Picker&& __picker, _Results&&... __results)
+  {
+    if constexpr (__always_pick<_Picker, _Results...>)
+      STDEXEC::set_value(std::forward<_Receiver>(__rcvr), std::forward<_Results>(__results)...);
+    else if constexpr (__never_pick<_Picker, _Results...>)
+      STDEXEC::__
+  }
+
   struct default_result_picker
   {
     template <class... _As>
