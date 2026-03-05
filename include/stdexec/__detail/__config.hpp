@@ -593,7 +593,7 @@ namespace STDEXEC
 #  define STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER() 1
 #endif
 
-#if defined(__cpp_rtti) && __cpp_rtti >= 1997'11L
+#if defined(__cpp_rtti) && __cpp_rtti >= 199711L
 #  define STDEXEC_NO_STDCPP_RTTI() 0
 #else
 #  define STDEXEC_NO_STDCPP_RTTI() 1
