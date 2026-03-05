@@ -291,14 +291,13 @@ namespace STDEXEC
           STDEXEC::__get_completion_behavior<_Tag, _SchSender, __fwd_env_t<_Env>...>();
         constexpr auto cb_sndr =
           STDEXEC::__get_completion_behavior<_Tag, _Sender, __fwd_env_t<_Env>...>();
-        return __completion_behavior::__weakest(cb_sched, cb_sndr);
+        return cb_sched | cb_sndr;
       }
 
       //! @brief Forwards other queries to the underlying sender's environment.
       //! @pre @c _Tag is a forwarding query but not a completion query.
       template <__forwarding_query _Tag, class... _Args>
-        requires(!__is_completion_query<_Tag>)
-             && __queryable_with<env_of_t<_Sender>, _Tag, _Args...>
+        requires(!__completion_query<_Tag>) && __queryable_with<env_of_t<_Sender>, _Tag, _Args...>
       [[nodiscard]]
       constexpr auto query(_Tag, _Args&&... __args) const
         noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Tag, _Args...>)
@@ -355,7 +354,7 @@ namespace STDEXEC
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Sender, continues_on_t>);
+        static_assert(__sender_for<_Sender, continues_on_t>);
         using __scheduler_t      = __decay_t<__data_of<_Sender>>;
         using __child_t          = __child_of<_Sender>;
         auto __child_completions = __get_child_completions<__child_t, _Env...>();
@@ -371,7 +370,7 @@ namespace STDEXEC
                                            _Receiver&& __rcvr) -> __state_for_t<_Sender, _Receiver>
         requires sender_in<__child_of<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
       {
-        static_assert(sender_expr_for<_Sender, continues_on_t>);
+        static_assert(__sender_for<_Sender, continues_on_t>);
         auto& [__tag, __sched, __child] = __sndr;
         return __state_for_t<_Sender, _Receiver>{__sched, static_cast<_Receiver&&>(__rcvr)};
       };

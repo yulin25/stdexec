@@ -367,7 +367,7 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
       {
-        return __completion_behavior::__weakest(
+        return __completion_behavior::__common(
           STDEXEC::__get_completion_behavior<_Tag, _Senders, _Env...>()...);
       }
     };
@@ -424,7 +424,7 @@ namespace STDEXEC
       template <class _Self, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Self, when_all_t>);
+        static_assert(__sender_for<_Self, when_all_t>);
         if constexpr (__minvocable_q<__completions_t, _Self, _Env...>)
         {
           // TODO: update this to use constant evaluation:
@@ -583,7 +583,7 @@ namespace STDEXEC
                                               _Child const &...) noexcept
       {
         // TODO(ericniebler): check this use of __sched_attrs
-        return __sched_attrs{std::cref(__sched)};
+        return __sched_attrs{__sched};
       };
 
       template <class _Sender, class... _Env>
@@ -602,7 +602,7 @@ namespace STDEXEC
                                               _Scheduler const & __sched,
                                               _Child const &...) noexcept
       {
-        return __sched_attrs{std::cref(__sched)};
+        return __sched_attrs{__sched};
       };
 
       template <class _Sender, class... _Env>
