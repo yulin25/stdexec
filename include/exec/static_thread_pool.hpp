@@ -1266,13 +1266,13 @@ namespace experimental::execution
                                _is_nothrow_bulk_fn<Shape, Fun>,
                                __q<__mand>>::value,
                completion_signatures<>,
-               __eptr_completion>;
+               __eptr_completion_t>;
 
       template <class... Tys>
       using _set_value_t = completion_signatures<set_value_t(STDEXEC::__decay_t<Tys>...)>;
 
       template <class Self, class... Env>
-      using _completions_t = STDEXEC::transform_completion_signatures<
+      using _completions_t = STDEXEC::__transform_completion_signatures_t<
         __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
         _with_error_invoke_t<__copy_cvref_t<Self, Sender>, Env...>,
         _set_value_t>;
@@ -1280,6 +1280,14 @@ namespace experimental::execution
       template <class Receiver>
       using _bulk_opstate_t =
         _static_thread_pool::_bulk_opstate<Parallelize, Shape, Fun, Sender, Receiver>;
+
+      explicit _bulk_sender(_static_thread_pool& pool, Sender sndr, Shape shape, Fun fun)
+        noexcept(__nothrow_move_constructible<Sender, Fun>)
+        : pool_(pool)
+        , sndr_(static_cast<Sender&&>(sndr))
+        , shape_(shape)
+        , fun_(static_cast<Fun&&>(fun))
+      {}
 
       template <__decays_to<_bulk_sender> Self, receiver Receiver>
         requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
@@ -1310,6 +1318,7 @@ namespace experimental::execution
         return STDEXEC::get_env(sndr_);
       }
 
+     private:
       _static_thread_pool& pool_;
       Sender               sndr_;
       Shape                shape_;
