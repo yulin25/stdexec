@@ -845,10 +845,10 @@ namespace STDEXEC
 
 #if __cplusplus >= 202211L
 #  define STDEXEC_CONSTEXPR_CXX23        constexpr
-#  define STDEXEC_STATIC_CONSTEXPR_LOCAL static constexpr
+#  define STDEXEC_CONSTEXPR_LOCAL static constexpr
 #else
 #  define STDEXEC_CONSTEXPR_CXX23
-#  define STDEXEC_STATIC_CONSTEXPR_LOCAL constexpr
+#  define STDEXEC_CONSTEXPR_LOCAL constexpr
 #endif
 
 #if !defined(STDEXEC_DEMANGLE_SENDER_NAMES) && STDEXEC_MSVC()
