@@ -96,9 +96,9 @@ namespace experimental::execution
         using receiver_base_::self_;
         void set_value(exit_scope_sender_type_) && noexcept;
         template <typename... Args>
-        constexpr void set_error(Args&&...) && noexcept;
+        void set_error(Args&&...) && noexcept;
         template <typename... Args>
-        constexpr void set_stopped(Args&&...) && noexcept;
+        void set_stopped(Args&&...) && noexcept;
       };
       using enter_operation_state_type_ = ::STDEXEC::connect_result_t<Scope, enter_receiver_type_>;
       struct exit_receiver_type_ : receiver_base_
@@ -225,7 +225,7 @@ namespace experimental::execution
 
     template <typename Scope, typename Sender, typename Receiver>
     template <typename... Args>
-    constexpr void
+    inline void
     state<Scope, Sender, Receiver>::enter_receiver_type_::set_error(Args&&... args) && noexcept
     {
       ::STDEXEC::set_error((Receiver&&) self_.r_, (Args&&) args...);
@@ -233,7 +233,7 @@ namespace experimental::execution
 
     template <typename Scope, typename Sender, typename Receiver>
     template <typename... Args>
-    constexpr void
+    inline void
     state<Scope, Sender, Receiver>::enter_receiver_type_::set_stopped(Args&&... args) && noexcept
     {
       ::STDEXEC::set_stopped((Receiver&&) self_.r_, (Args&&) args...);
