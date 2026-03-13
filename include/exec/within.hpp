@@ -104,7 +104,7 @@ namespace experimental::execution
       struct exit_receiver_type_ : receiver_base_
       {
         using receiver_base_::self_;
-        constexpr void set_value() && noexcept;
+        void set_value() && noexcept;
       };
       using exit_operation_state_type_ =
         ::STDEXEC::connect_result_t<exit_scope_sender_type_, exit_receiver_type_>;
@@ -240,7 +240,7 @@ namespace experimental::execution
     }
 
     template <typename Scope, typename Sender, typename Receiver>
-    constexpr void state<Scope, Sender, Receiver>::exit_receiver_type_::set_value() && noexcept
+    inline void state<Scope, Sender, Receiver>::exit_receiver_type_::set_value() && noexcept
     {
       std::move(self_.storage_).complete((Receiver&&) self_.r_);
     }
