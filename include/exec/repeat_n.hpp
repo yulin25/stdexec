@@ -224,10 +224,14 @@ namespace experimental::execution
       };
 
       template <class _Sender, class... _Env>
+        requires requires { __completions_t<__child_of<_Sender>, _Env...>{}; }
+              || (sizeof...(_Env) == 0)
       static consteval auto __get_completion_signatures()
       {
-        // TODO: port this to use constant evaluation
-        return __completions_t<__child_of<_Sender>, _Env...>{};
+        if constexpr (requires { __completions_t<__child_of<_Sender>, _Env...>{}; })
+          return __completions_t<__child_of<_Sender>, _Env...>{};
+        else
+          return STDEXEC::__dependent_sender<_Sender>();
       }
 
       static constexpr auto __connect =  //
