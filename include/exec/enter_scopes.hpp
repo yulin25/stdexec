@@ -68,14 +68,7 @@ namespace experimental::execution
         //  Note the parameter is by value which means that we can't possibly have a
         //  reference back into the operation state, this is exception safe because
         //  exit senders must be nothrow decay-copyable
-        constexpr void set_value(exit_scope_sender_type_ sender) && noexcept
-        {
-          auto   base = (Receiver&&) *this;
-          auto&& self = self_;
-          //  This destroys *this
-          self.storage_.template emplace<exit_scope_sender_type_>(std::move(sender));
-          ::STDEXEC::set_value(std::move(base));
-        }
+        void                      set_value(exit_scope_sender_type_ sender) && noexcept;
         enter_scope_sender_state& self_;
       };
       using operation_state_type_ = ::STDEXEC::connect_result_t<Sender, receiver_type_>;
@@ -252,6 +245,18 @@ namespace experimental::execution
         std::apply([](auto&&... states) noexcept { (states.start(), ...); }, states_);
       }
     };
+
+    template <::exec::enter_scope_sender Sender, typename Receiver, typename RollbackReceiver>
+    inline void
+    enter_scope_sender_state<Sender, Receiver, RollbackReceiver>::receiver_type_::set_value(
+      exit_scope_sender_type_ sender) && noexcept
+    {
+      auto   base = (Receiver&&) *this;
+      auto&& self = self_;
+      //  This destroys *this
+      self.storage_.template emplace<exit_scope_sender_type_>(std::move(sender));
+      ::STDEXEC::set_value(std::move(base));
+    }
 
     template <typename Receiver, typename... Senders>
     inline auto state<Receiver, Senders...>::receiver_base_::get_env() const noexcept -> env_type_
