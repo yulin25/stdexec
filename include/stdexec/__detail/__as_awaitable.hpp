@@ -17,6 +17,8 @@
 
 #include "__execution_fwd.hpp"
 
+#include "../coroutine.hpp"
+#include "../functional.hpp"
 #include "__atomic.hpp"
 #include "__awaitable.hpp"
 #include "__completion_signatures_of.hpp"
@@ -24,7 +26,6 @@
 #include "__connect.hpp"
 #include "__meta.hpp"
 #include "__queries.hpp"
-#include "__tag_invoke.hpp"
 #include "__type_traits.hpp"
 
 #include <exception>
@@ -40,7 +41,10 @@ STDEXEC_PRAGMA_IGNORE_MSVC(4714)  // marked as __forceinline not inlined
 namespace STDEXEC
 {
 #if !STDEXEC_NO_STDCPP_COROUTINES()
-  namespace __detail
+  /////////////////////////////////////////////////////////////////////////////
+  // STDEXEC::as_awaitable [exec.as.awaitable]
+
+  namespace __as_awaitable
   {
     template <std::size_t _Count>
     extern __q<__decayed_std_tuple> const __as_single;
@@ -74,12 +78,7 @@ namespace STDEXEC
     template <class _Sender>
     using __adapted_sender_t =
       __remove_rvalue_reference_t<__call_result_t<__adapt_completion_t<_Sender>, _Sender>>;
-  }  // namespace __detail
 
-  /////////////////////////////////////////////////////////////////////////////
-  // STDEXEC::as_awaitable [exec.as.awaitable]
-  namespace __as_awaitable
-  {
     struct __void
     {};
 
@@ -89,6 +88,8 @@ namespace STDEXEC
     template <class _Value>
     using __expected_t =
       std::variant<std::monostate, __value_or_void_t<_Value>, std::exception_ptr>;
+
+    using __connect_await::__has_as_awaitable_member;
 
     template <class _Tag, class _Sender, class... _Env>
     concept __completes_inline_for = __never_sends<_Tag, _Sender, _Env...>
@@ -192,8 +193,7 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto get_env() const noexcept -> env_of_t<_Promise&>
       {
-        auto __pcoro = this->__awaiter_.__continuation_.address();
-        auto __hcoro = __std::coroutine_handle<_Promise>::from_address(__pcoro);
+        auto __hcoro = STDEXEC::__coroutine_handle_cast<_Promise>(this->__awaiter_.__continuation_);
         return STDEXEC::get_env(__hcoro.promise());
       }
     };
@@ -229,10 +229,9 @@ namespace STDEXEC
           // Resuming the stopped continuation unwinds the coroutine stack until we reach
           // a promise that can handle the stopped signal. The coroutine referred to by
           // __continuation_ will never be resumed.
-          auto  __pcoro   = this->__awaiter_.__continuation_.address();
-          auto  __hcoro   = __std::coroutine_handle<_Promise>::from_address(__pcoro);
-          auto& __promise = __hcoro.promise();
-          __std::coroutine_handle<> __unwind = __promise.unhandled_stopped();
+          auto __hcoro = STDEXEC::__coroutine_handle_cast<_Promise>(
+            this->__awaiter_.__continuation_);
+          __std::coroutine_handle<> __unwind = __hcoro.promise().unhandled_stopped();
           __unwind.resume();
         }
         STDEXEC_CATCH_ALL
@@ -268,7 +267,7 @@ namespace STDEXEC
                                                       __std::memory_order_acquire);
         if (__was_ready)
         {
-          // We get here if __ready_ was true then the CAS was executed. It got set to
+          // We get here if __ready_ was true when the CAS was executed. It got set to
           // true in await_suspend() immediately after the operation was started, which
           // implies that this completion is happening asynchronously, so we need to
           // resume the continuation from here.
@@ -278,19 +277,18 @@ namespace STDEXEC
     };
 
     template <class _Sender, class _Promise>
-    using __sync_receiver_t = __sync_receiver<_Promise, __detail::__value_t<_Sender, _Promise>>;
+    using __sync_receiver_t = __sync_receiver<_Promise, __value_t<_Sender, _Promise>>;
 
     template <class _Sender, class _Promise>
-    using __async_receiver_t = __async_receiver<_Promise, __detail::__value_t<_Sender, _Promise>>;
+    using __async_receiver_t = __async_receiver<_Promise, __value_t<_Sender, _Promise>>;
 
     //////////////////////////////////////////////////////////////////////////////////////
     // __sender_awaitable: awaitable type returned by as_awaitable when given a sender
     // that does not have an as_awaitable member function
-    template <class _Promise, class _Sender>
-    struct __sender_awaitable
-      : __sender_awaitable_base<__detail::__value_t<_Sender, _Promise>, false>
+    template <class _Promise, sender_in<env_of_t<_Promise&>> _Sender>
+    struct __sender_awaitable : __sender_awaitable_base<__value_t<_Sender, _Promise>, false>
     {
-      using __value_t = __detail::__value_t<_Sender, _Promise>;
+      using __value_t = __as_awaitable::__value_t<_Sender, _Promise>;
 
       constexpr explicit __sender_awaitable(_Sender&&                         __sndr,
                                             __std::coroutine_handle<_Promise> __hcoro)
@@ -350,12 +348,12 @@ namespace STDEXEC
 
     // When the sender is known to complete inline, we can connect and start the operation
     // in await_suspend.
-    template <class _Promise, class _Sender>
+    template <class _Promise, sender_in<env_of_t<_Promise&>> _Sender>
       requires __completes_inline<_Sender, env_of_t<_Promise&>>
     struct __sender_awaitable<_Promise, _Sender>
-      : __sender_awaitable_base<__detail::__value_t<_Sender, _Promise>, true>
+      : __sender_awaitable_base<__value_t<_Sender, _Promise>, true>
     {
-      using __value_t = __detail::__value_t<_Sender, _Promise>;
+      using __value_t = __as_awaitable::__value_t<_Sender, _Promise>;
 
       constexpr explicit __sender_awaitable(_Sender&&                         sndr,
                                             __std::coroutine_handle<_Promise> __hcoro)
@@ -404,7 +402,7 @@ namespace STDEXEC
 
     template <class _Sender, class _Promise>
     concept __awaitable_adapted_sender = sender_in<_Sender, env_of_t<_Promise&>>
-                                      && __minvocable_q<__detail::__value_t, _Sender, _Promise>
+                                      && __minvocable_q<__value_t, _Sender, _Promise>
                                       && requires(_Promise& __promise) {
                                            {
                                              __promise.unhandled_stopped()
@@ -412,106 +410,78 @@ namespace STDEXEC
                                          };
 
     template <class _Sender, class _Promise>
-    concept __awaitable_sender =
-      __awaitable_adapted_sender<__detail::__adapted_sender_t<_Sender>, _Promise>;
-
-    struct __unspecified
-    {
-      constexpr auto get_return_object() noexcept -> __unspecified;
-      constexpr auto initial_suspend() noexcept -> __unspecified;
-      constexpr auto final_suspend() noexcept -> __unspecified;
-      constexpr void unhandled_exception() noexcept;
-      constexpr void return_void() noexcept;
-      constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>;
-    };
+    concept __awaitable_sender = __awaitable_adapted_sender<__adapted_sender_t<_Sender>, _Promise>;
 
     template <class _Sender, class _Promise>
-    concept __incompatible_sender = sender<_Sender>
-                                 && __merror<__detail::__value_t<_Sender, _Promise>>;
+    concept __incompatible_sender = sender<_Sender> && __merror<__value_t<_Sender, _Promise>>;
+
+    // clang-format off
+    template <class _Ty, class _Promise>
+    concept __simple_awaitable = requires(_Ty&& __value, _Promise& __promise) {
+      { STDEXEC::__get_awaiter(static_cast<_Ty&&>(__value)) } -> __awaiter<_Promise>;
+    };
+    // clang-format on
+
+    template <class _Sender, class _Promise>
+    concept __has_transform_as_awaitable_member =
+      sender_in<_Sender, env_of_t<_Promise>>
+      && __has_as_awaitable_member<transform_sender_result_t<_Sender, env_of_t<_Promise>>,
+                                   _Promise>;
+
+    template <class _Sender, class _Promise>
+    concept __awaitable_transform_sender =  //
+      sender_in<_Sender, env_of_t<_Promise>>
+      && __awaitable_sender<transform_sender_result_t<_Sender, env_of_t<_Promise>>, _Promise>;
+
+    inline constexpr auto __with_member =  //
+      []<class _Promise, __has_as_awaitable_member<_Promise> _Tp>(_Tp&& __t, auto& __promise)
+        STDEXEC_AUTO_RETURN(static_cast<_Tp&&>(__t).as_awaitable(__promise));
+
+    inline constexpr auto __with_transform_member =  //
+      []<class _Promise, __has_transform_as_awaitable_member<_Promise> _Tp>(_Tp&&     __t,
+                                                                            _Promise& __promise)
+        STDEXEC_AUTO_RETURN(
+          STDEXEC::transform_sender(static_cast<_Tp&&>(__t), STDEXEC::get_env(__promise))
+            .as_awaitable(__promise));
+
+    inline constexpr auto __with_await =  //
+      []<class _Promise, __simple_awaitable<_Promise> _Tp>(_Tp&& __t, _Promise&)
+        STDEXEC_AUTO_RETURN(static_cast<_Tp&&>(__t));
+
+    inline constexpr auto __with_sender =  //
+      []<class _Promise, __awaitable_transform_sender<_Promise> _Tp>(_Tp&& __t, _Promise& __promise)
+        STDEXEC_AUTO_RETURN(__sender_awaitable{
+          __as_awaitable::__adapt_sender_for_await(
+            STDEXEC::transform_sender(static_cast<_Tp&&>(__t), STDEXEC::get_env(__promise))),
+          __std::coroutine_handle<_Promise>::from_promise(__promise)});
+
+    // NOT TO SPEC: It's a sender, but it isn't a sender in the current promise's
+    // environment, so we can return the error type that results from trying to
+    // compute the sender's value type:
+    inline constexpr auto __with_incompatible_sender =  //
+      []<class _Promise, __incompatible_sender<_Promise> _Tp>(_Tp&&, _Promise&)
+    {
+      return __value_t<_Tp, _Promise>{};
+    };
+
+    inline constexpr auto __identity =  //
+      []<class _Tp>(_Tp&& __t, __ignore) noexcept -> decltype(auto)
+    {
+      return static_cast<_Tp&&>(__t);
+    };
+
+    inline constexpr auto __as_awaitable_impl =  //
+      __first_callable{__with_member,
+                       __with_transform_member,
+                       __with_await,
+                       __with_sender,
+                       __with_incompatible_sender,
+                       __identity};
+
   }  // namespace __as_awaitable
 
-  struct as_awaitable_t
-  {
-    template <class _Tp, class _Promise>
-    static consteval auto __get_declfn() noexcept
-    {
-      using namespace __as_awaitable;
-      if constexpr (__connect_await::__has_as_awaitable_member<_Tp, _Promise>)
-      {
-        using __result_t = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
-        constexpr bool __is_nothrow = noexcept(
-          __declval<_Tp>().as_awaitable(__declval<_Promise&>()));
-        return __declfn<__result_t, __is_nothrow>();
-      }
-      else if constexpr (__awaitable<_Tp, __unspecified>)  // NOT __awaitable<_Tp, _Promise> !!
-      {                                                    // NOLINT(bugprone-branch-clone)
-        return __declfn<_Tp&&>();
-      }
-      else if constexpr (__awaitable_sender<_Tp, _Promise>)
-      {
-        using __result_t            = decltype(  //
-          __sender_awaitable{__detail::__adapt_sender_for_await(__declval<_Tp>()),
-                             __std::coroutine_handle<_Promise>()});
-        constexpr bool __is_nothrow = noexcept(
-          __sender_awaitable{__detail::__adapt_sender_for_await(__declval<_Tp>()),
-                             __std::coroutine_handle<_Promise>()});
-        return __declfn<__result_t, __is_nothrow>();
-      }
-      else if constexpr (__incompatible_sender<_Tp, _Promise>)
-      {
-        // NOT TO SPEC: It's a sender, but it isn't a sender in the current promise's
-        // environment, so we can return the error type that results from trying to
-        // compute the sender's value type:
-        return __declfn<__detail::__value_t<_Tp, _Promise>>();
-      }
-      else
-      {
-        return __declfn<_Tp&&>();
-      }
-    }
-
-    template <class _Tp, class _Promise, auto _DeclFn = __get_declfn<_Tp, _Promise>()>
-      requires __callable<__mtypeof<_DeclFn>>
-    auto operator()(_Tp&& __t, _Promise& __promise) const noexcept(noexcept(_DeclFn()))
-      -> decltype(_DeclFn())
-    {
-      using namespace __as_awaitable;
-      if constexpr (__connect_await::__has_as_awaitable_member<_Tp, _Promise>)
-      {
-        return static_cast<_Tp&&>(__t).as_awaitable(__promise);
-      }
-      else if constexpr (__awaitable<_Tp, __unspecified>)  // NOT __awaitable<_Tp, _Promise> !!
-      {                                                    // NOLINT(bugprone-branch-clone)
-        return static_cast<_Tp&&>(__t);
-      }
-      else if constexpr (__awaitable_sender<_Tp, _Promise>)
-      {
-        auto __hcoro = __std::coroutine_handle<_Promise>::from_promise(__promise);
-        return __sender_awaitable{__detail::__adapt_sender_for_await(static_cast<_Tp&&>(__t)),
-                                  __hcoro};
-      }
-      else if constexpr (__incompatible_sender<_Tp, _Promise>)
-      {
-        return __detail::__value_t<_Tp, _Promise>();
-      }
-      else
-      {
-        return static_cast<_Tp&&>(__t);
-      }
-    }
-
-    template <class _Tp, class _Promise, auto _DeclFn = __get_declfn<_Tp, _Promise>()>
-      requires __callable<__mtypeof<_DeclFn>> || __tag_invocable<as_awaitable_t, _Tp, _Promise&>
-    [[deprecated("the use of tag_invoke for as_awaitable is deprecated")]]
-    auto operator()(_Tp&& __t, _Promise& __promise) const
-      noexcept(__nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>)
-        -> __tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>
-    {
-      using __result_t = __tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
-      static_assert(__awaitable<__result_t, _Promise>);
-      return __tag_invoke(*this, static_cast<_Tp&&>(__t), __promise);
-    }
-  };
+  struct as_awaitable_t : decltype(__as_awaitable::__as_awaitable_impl)
+  {};
 
   inline constexpr as_awaitable_t as_awaitable{};
 #endif
