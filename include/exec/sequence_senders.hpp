@@ -16,11 +16,25 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__execution_fwd.hpp"
 
+#include "../stdexec/__detail/__completion_signatures.hpp"
 #include "../stdexec/__detail/__concepts.hpp"
+#include "../stdexec/__detail/__connect.hpp"
+#include "../stdexec/__detail/__debug.hpp"
 #include "../stdexec/__detail/__diagnostics.hpp"
+#include "../stdexec/__detail/__env.hpp"
+#include "../stdexec/__detail/__just.hpp"
 #include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__receivers.hpp"
+#include "../stdexec/__detail/__senders.hpp"
+#include "../stdexec/__detail/__stop_token.hpp"
+#include "../stdexec/__detail/__tag_invoke.hpp"
+#include "../stdexec/__detail/__transform_sender.hpp"
+#include "../stdexec/__detail/__type_traits.hpp"
+#include "../stdexec/__detail/__utility.hpp"
+#include "../stdexec/stop_token.hpp"
+
 #include "completion_signatures.hpp"
 
 STDEXEC_PRAGMA_PUSH()
@@ -29,20 +43,22 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
 ////////////////////////////////////////////////////////////////////////////////
 #define STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION                                                   \
   "A sequence sender must provide a `subscribe` member function that takes a receiver as an\n"     \
-  "argument and returns an object whose type satisfies `STDEXEC::operation_state`,\n"              \
+  "argument and returns an object whose type satisfies `" STDEXEC_PP_STRINGIZE(STDEXEC)            \
+  "::operation_state`,\n"                                                                          \
   "as shown below:\n"                                                                              \
   "\n"                                                                                             \
   "  class MySequenceSender\n"                                                                     \
   "  {\n"                                                                                          \
   "  public:\n"                                                                                    \
-  "    using sender_concept        = exec::sequence_sender_t;\n"                                   \
+  "    using sender_concept        = exec::sequence_sender_tag;\n"                                 \
   "    using item_types            = exec::item_types<>;\n"                                        \
-  "    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;\n"    \
+  "    using completion_signatures = " STDEXEC_PP_STRINGIZE(STDEXEC) "::completion_signatures<"    \
+       STDEXEC_PP_STRINGIZE(STDEXEC) "::set_value_t()>;\n"                                         \
   "\n"                                                                                             \
   "    template <class Receiver>\n"                                                                \
   "    struct MyOpState\n"                                                                         \
   "    {\n"                                                                                        \
-  "      using operation_state_concept = STDEXEC::operation_state_t;\n"                            \
+  "      using operation_state_concept = " STDEXEC_PP_STRINGIZE(STDEXEC) "::operation_state_tag;\n"\
   "\n"                                                                                             \
   "      void start() noexcept\n"                                                                  \
   "      {\n"                                                                                      \
@@ -53,7 +69,7 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
   "      Receiver rcvr_;\n"                                                                        \
   "    };\n"                                                                                       \
   "\n"                                                                                             \
-  "    template <STDEXEC::receiver Receiver>\n"                                                    \
+  "    template <" STDEXEC_PP_STRINGIZE(STDEXEC) "::receiver Receiver>\n"                          \
   "    auto subscribe(Receiver rcvr) -> MyOpState<Receiver>\n"                                     \
   "    {\n"                                                                                        \
   "      return MyOpState<Receiver>{std::move(rcvr)};\n"                                           \
@@ -71,7 +87,8 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
 ////////////////////////////////////////////////////////////////////////////////
 #define STDEXEC_ERROR_SUBSCRIBE_DOES_NOT_RETURN_OPERATION_STATE                                    \
   "\n"                                                                                             \
-  "FAILURE: The subscribe customization did not return an `STDEXEC::operation_state`.\n"           \
+  "FAILURE: The subscribe customization did not return an `" STDEXEC_PP_STRINGIZE(STDEXEC)         \
+  "::operation_state`.\n"                                                                          \
   "\n" STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION
 
 namespace experimental::execution
@@ -90,38 +107,27 @@ namespace experimental::execution
   template <class... _Sequences>
   using _WITH_PRETTY_SEQUENCES_ = _WITH_SEQUENCES_<STDEXEC::__demangle_t<_Sequences>...>;
 
-  struct sequence_sender_t : STDEXEC::sender_t
+  struct sequence_sender_tag : STDEXEC::sender_tag
   {};
 
-  using sequence_tag [[deprecated("Renamed to exec::sequence_sender_t")]] = exec::sequence_sender_t;
-
-  namespace __sequence_sndr
-  {
-    using namespace STDEXEC;
-
-    template <class _Haystack>
-    struct __mall_contained_in_impl
-    {
-      template <class... _Needles>
-      using __f = __mand<__mapply<__mcontains<_Needles>, _Haystack>...>;
-    };
-    template <class _Needles, class _Haystack>
-    using __mall_contained_in_t = __mapply<__mall_contained_in_impl<_Haystack>, _Needles>;
-
-    template <class _Needles, class _Haystack>
-    concept __all_contained_in = __mall_contained_in_t<_Needles, _Haystack>::value;
-  }  // namespace __sequence_sndr
+  using sequence_tag
+    [[deprecated("Renamed to exec::sequence_sender_tag")]] = exec::sequence_sender_tag;
+  using sequence_sender_t
+    [[deprecated("Renamed to exec::sequence_sender_tag")]] = exec::sequence_sender_tag;
 
   // This concept checks if a given sender satisfies the requirements to be returned from `set_next`.
   template <class _Sender, class _Env = STDEXEC::env<>>
   concept next_sender =
     STDEXEC::sender_in<_Sender, _Env>
-    && __sequence_sndr::__all_contained_in<
-      STDEXEC::completion_signatures_of_t<_Sender, _Env>,
-      STDEXEC::completion_signatures<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>>;
+    && STDEXEC::__mapply<
+      STDEXEC::__mbind_front_q<STDEXEC::__mset_contains_t,
+                               STDEXEC::__mset<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>>,
+      STDEXEC::completion_signatures_of_t<_Sender, _Env>>::value;
 
   namespace __sequence_sndr
   {
+    using namespace STDEXEC;
+
     template <class _Receiver, class _Item>
     concept __has_set_next_member = requires(_Receiver& __rcvr, _Item&& __item) {
       __rcvr.set_next(static_cast<_Item&&>(__item));
@@ -140,6 +146,9 @@ namespace experimental::execution
         noexcept(noexcept(__rcvr.set_next(static_cast<_Item&&>(__item))))
           -> decltype(__rcvr.set_next(static_cast<_Item&&>(__item)))
       {
+        static_assert(next_sender<decltype(__rcvr.set_next(static_cast<_Item&&>(__item)))>,
+                      "The sender returned from set_next is required to complete with "
+                      "set_value_t() or set_stopped_t()");
         return __rcvr.set_next(static_cast<_Item&&>(__item));
       }
 
@@ -153,8 +162,7 @@ namespace experimental::execution
       {
         static_assert(next_sender<__tag_invoke_result_t<set_next_t, _Receiver&, _Item>>,
                       "The sender returned from set_next is required to complete with "
-                      "set_value_t() or "
-                      "set_stopped_t()");
+                      "set_value_t() or set_stopped_t()");
         return __tag_invoke(*this, __rcvr, static_cast<_Item&&>(__item));
       }
     };
@@ -173,7 +181,7 @@ namespace experimental::execution
     template <class _Receiver>
     struct __stopped_means_break
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
       using __token_t        = stop_token_of_t<env_of_t<_Receiver>>;
 
       constexpr void set_value() noexcept
@@ -214,7 +222,7 @@ namespace experimental::execution
   template <class _Sequence>
   concept __enable_sequence_sender =
     requires { typename _Sequence::sender_concept; }  //
-    && STDEXEC::__std::derived_from<typename _Sequence::sender_concept, sequence_sender_t>;
+    && STDEXEC::__std::derived_from<typename _Sequence::sender_concept, sequence_sender_tag>;
 
   template <class _Sequence>
   inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sequence>;
@@ -560,7 +568,7 @@ namespace experimental::execution
   struct __sequence_type_check_failure  //
     : STDEXEC::__compile_time_error<__sequence_type_check_failure<_Data, _What...>>
   {
-    static_assert(std::is_nothrow_move_constructible_v<_Data>,
+    static_assert(STDEXEC::__nothrow_move_constructible<_Data>,
                   "The data member of sender_type_check_failure must be nothrow move "
                   "constructible.");
 
@@ -726,7 +734,7 @@ namespace experimental::execution
 
     template <class _Sequence, class _Receiver>
     using __subscribe_static_member_result_t = decltype(STDEXEC_REMOVE_REFERENCE(
-      _Sequence)::subscribe(__declval<_Sequence>(), __declval<_Receiver>()));
+      _Sequence)::__static_subscribe(__declval<_Sequence>(), __declval<_Receiver>()));
 
     template <class _Sequence, class _Receiver>
     concept __subscribable_with_static_member =
@@ -778,9 +786,9 @@ namespace experimental::execution
 
         static_assert(sequence_sender<_Sequence>
                         || has_sequence_item_types<_Sequence, env_of_t<_Receiver>>,
-                      "The first argument to STDEXEC::subscribe must be a sequence sender");
+                      "The first argument to exec::subscribe must be a sequence sender");
         static_assert(receiver<_Receiver>,
-                      "The second argument to STDEXEC::subscribe must be a receiver");
+                      "The second argument to exec::subscribe must be a receiver");
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
         static_assert(__type_check_arguments<__tfx_seq_t, _Receiver>());
 #endif
@@ -798,10 +806,10 @@ namespace experimental::execution
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
         {
           using __result_t = decltype(STDEXEC_REMOVE_REFERENCE(
-            __tfx_seq_t)::subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
+            __tfx_seq_t)::__static_subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
           __check_operation_state<__result_t>();
           constexpr bool __nothrow_subscribe = noexcept(STDEXEC_REMOVE_REFERENCE(
-            __tfx_seq_t)::subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
+            __tfx_seq_t)::__static_subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
           return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
         }
         else if constexpr (__subscribable_with_member<__tfx_seq_t, _Receiver>)
@@ -819,8 +827,10 @@ namespace experimental::execution
         }
         else
         {
-          static_assert(__subscribable_with_static_member<__tfx_seq_t, _Receiver>,
-                        STDEXEC_ERROR_CANNOT_SUBSCRIBE_SEQUENCE_TO_RECEIVER);
+          using __result_t
+            [[maybe_unused]] = decltype(__declval<__tfx_seq_t>().subscribe(__declval<_Receiver>()));
+          // static_assert(__subscribable_with_static_member<__tfx_seq_t, _Receiver>,
+          //               STDEXEC_ERROR_CANNOT_SUBSCRIBE_SEQUENCE_TO_RECEIVER);
           return _NO_USABLE_SUBSCRIBE_CUSTOMIZATION_FOUND_();
         }
       }
@@ -840,17 +850,16 @@ namespace experimental::execution
         if constexpr (__next_connectable<__tfx_seq_t, _Receiver>)
         {
           // sender as sequence of one
-          next_sender_of_t<_Receiver, __tfx_seq_t> __next =
-            set_next(__rcvr, static_cast<__tfx_seq_t&&>(__tfx_seq));
-          return STDEXEC::connect(static_cast<next_sender_of_t<_Receiver, __tfx_seq_t>&&>(__next),
+          using __next_sender_t  = next_sender_of_t<_Receiver, __tfx_seq_t>;
+          __next_sender_t __next = set_next(__rcvr, static_cast<__tfx_seq_t&&>(__tfx_seq));
+          return STDEXEC::connect(static_cast<__next_sender_t&&>(__next),
                                   __stopped_means_break<_Receiver>{
                                     static_cast<_Receiver&&>(__rcvr)});
-          // NOLINTNEXTLINE(bugprone-branch-clone)
         }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
-        {
-          return __tfx_seq.subscribe(static_cast<__tfx_seq_t&&>(__tfx_seq),
-                                     static_cast<_Receiver&&>(__rcvr));
+        {  // NOLINT(bugprone-branch-clone)
+          return __tfx_seq.__static_subscribe(static_cast<__tfx_seq_t&&>(__tfx_seq),
+                                              static_cast<_Receiver&&>(__rcvr));
         }
         else if constexpr (__subscribable_with_member<__tfx_seq_t, _Receiver>)
         {
@@ -871,9 +880,9 @@ namespace experimental::execution
 
           // This should generate an instantiate backtrace that contains useful
           // debugging information.
-          next_sender_of_t<_Receiver, __tfx_seq_t> __next =
-            set_next(__rcvr, static_cast<__tfx_seq_t&&>(__tfx_seq));
-          return STDEXEC::connect(static_cast<next_sender_of_t<_Receiver, __tfx_seq_t>&&>(__next),
+          using __next_sender_t  = next_sender_of_t<_Receiver, __tfx_seq_t>;
+          __next_sender_t __next = set_next(__rcvr, static_cast<__tfx_seq_t&&>(__tfx_seq));
+          return STDEXEC::connect(static_cast<__next_sender_t&&>(__next),
                                   __stopped_means_break<_Receiver>{
                                     static_cast<_Receiver&&>(__rcvr)});
         }
@@ -985,12 +994,12 @@ namespace experimental::execution
   "  class MySequence\n"                                                                           \
   "  {\n"                                                                                          \
   "  public:\n"                                                                                    \
-  "    using sender_concept = exec::sequence_sender_t;\n"                                          \
+  "    using sender_concept = exec::sequence_sender_tag;\n"                                        \
   "\n"                                                                                             \
   "    template <class... _Env>\n"                                                                 \
   "    auto get_item_types(_Env&&...) -> exec::item_types<\n"                                      \
   "      // This sequence produces void items...\n"                                                \
-  "      STDEXEC::__call_result_t<STDEXEC::just_t>>\n"                                             \
+  "      " STDEXEC_PP_STRINGIZE(STDEXEC) "::__call_result_t<" STDEXEC_PP_STRINGIZE(STDEXEC) "::just_t>>\n"                                             \
   "    {\n"                                                                                        \
   "    return {};\n"                                                                               \
   "    }\n"                                                                                        \
@@ -1079,7 +1088,7 @@ namespace experimental::execution
       : STDEXEC::__debug::__receiver<_CvSequence, _Env, _Sigs...>
       , __valid_next<_Items...>
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr auto get_env() const noexcept -> STDEXEC::__debug::__env_t<_Env>

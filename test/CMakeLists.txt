@@ -20,6 +20,7 @@ set(stdexec_test_sources
     stdexec/cpos/test_cpo_receiver.cpp
     stdexec/cpos/test_cpo_start.cpp
     stdexec/cpos/test_cpo_connect.cpp
+    stdexec/cpos/test_cpo_connect_awaitable.cpp
     stdexec/cpos/test_cpo_schedule.cpp
     stdexec/cpos/test_cpo_upon_error.cpp
     stdexec/cpos/test_cpo_upon_stopped.cpp
@@ -87,7 +88,9 @@ set_target_properties(common_test_settings PROPERTIES
 target_include_directories(common_test_settings INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
 target_compile_definitions(common_test_settings INTERFACE STDEXEC_NAMESPACE=std::execution)
 target_compile_options(common_test_settings INTERFACE
-    $<$<CXX_COMPILER_ID:MSVC>:/wd4714>) # function marked as __forceinline not inlined
+    $<$<CXX_COMPILER_ID:MSVC>:/wd4714> # function marked as __forceinline not inlined
+    $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted from stdlib headers, why?
+    )
 target_link_libraries(common_test_settings INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 # target_compile_definitions(
 #     common_test_settings INTERFACE
@@ -102,14 +105,14 @@ target_link_libraries(test.stdexec
     PRIVATE
     common_test_settings)
 
-if(STDEXEC_BUILD_SYSTEM_CONTEXT)
-  add_executable(test.system_context_replaceability
+if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
+  add_executable(test.parallel_scheduler_replacement
                  test_main.cpp
-                 stdexec/schedulers/test_system_context_replaceability.cpp)
-  target_link_libraries(test.system_context_replaceability
+                 stdexec/schedulers/test_parallel_scheduler_replacement.cpp)
+  target_link_libraries(test.parallel_scheduler_replacement
       PUBLIC
       STDEXEC::stdexec
-      STDEXEC::system_context
+      STDEXEC::parallel_scheduler
       stdexec_executable_flags
       Catch2::Catch2
       PRIVATE
@@ -132,10 +135,12 @@ include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
 # For testing that builds fail as expected
 include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
 
-catch_discover_tests(test.stdexec)
-catch_discover_tests(test.scratch)
-if(STDEXEC_BUILD_SYSTEM_CONTEXT AND NOT STDEXEC_ENABLE_CUDA)
-    catch_discover_tests(test.system_context_replaceability)
+catch_discover_tests(test.stdexec PROPERTIES TIMEOUT 30)
+
+catch_discover_tests(test.scratch PROPERTIES TIMEOUT 30)
+
+if(STDEXEC_BUILD_PARALLEL_SCHEDULER AND NOT STDEXEC_ENABLE_CUDA)
+    catch_discover_tests(test.parallel_scheduler_replacement PROPERTIES TIMEOUT 30)
 endif()
 
 add_subdirectory(exec)

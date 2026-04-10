@@ -59,7 +59,7 @@ namespace experimental::execution
     };
 
     template <class _ResultVariant>
-    struct __result_type : __immovable
+    struct __result_type
     {
       template <class... _Args>
       void __emplace(_Args&&... __args) noexcept
@@ -106,7 +106,7 @@ namespace experimental::execution
     template <class _ItemReceiver, class _ResultVariant>
     struct __item_receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
       __item_operation_base<_ItemReceiver, _ResultVariant>* __op_;
 
       template <class... _Args>
@@ -170,7 +170,7 @@ namespace experimental::execution
     template <class _Sender, class _ResultVariant>
     struct __item_sender
     {
-      using sender_concept        = STDEXEC::sender_t;
+      using sender_concept        = STDEXEC::sender_tag;
       using completion_signatures = STDEXEC::completion_signatures<set_value_t(), set_stopped_t()>;
 
       template <class _Self, class _Receiver>
@@ -206,7 +206,7 @@ namespace experimental::execution
     template <class _Receiver, class _ResultVariant>
     struct __receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       constexpr explicit __receiver(__operation_base<_Receiver, _ResultVariant>* __op) noexcept
         : __op_{__op}
@@ -273,6 +273,8 @@ namespace experimental::execution
         : __base_type{{}, static_cast<_Receiver&&>(__rcvr)}
         , __op_{exec::subscribe(static_cast<_Sender&&>(__sndr), __receiver_t{this})}
       {}
+
+      STDEXEC_IMMOVABLE(__operation);
 
       void start() & noexcept
       {

@@ -47,16 +47,9 @@ namespace STDEXEC::__sync_wait
   // [execution.senders.consumers.sync_wait_with_variant]
   struct __env
   {
-    run_loop* __loop_ = nullptr;
-
+    template <__one_of<get_scheduler_t, get_start_scheduler_t, get_delegation_scheduler_t> _Query>
     [[nodiscard]]
-    constexpr auto query(get_scheduler_t) const noexcept -> run_loop::scheduler
-    {
-      return __loop_->get_scheduler();
-    }
-
-    [[nodiscard]]
-    constexpr auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler
+    constexpr auto query(_Query) const noexcept -> run_loop::scheduler
     {
       return __loop_->get_scheduler();
     }
@@ -66,6 +59,8 @@ namespace STDEXEC::__sync_wait
     {
       return true;
     }
+
+    run_loop* __loop_ = nullptr;
   };
 
   // What should sync_wait(just_stopped()) return?
@@ -91,7 +86,7 @@ namespace STDEXEC::__sync_wait
   template <class... _Values>
   struct __receiver
   {
-    using receiver_concept = receiver_t;
+    using receiver_concept = receiver_tag;
 
     template <class... _As>
     constexpr void set_value(_As&&... __as) noexcept
@@ -209,17 +204,17 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
         STDEXEC::__count_of<STDEXEC::set_value_t, _CvSender, STDEXEC::__sync_wait::__env>::value;
 
       static_assert(__success_completion_count != 0,
-                    "The argument to STDEXEC::sync_wait() is a sender that cannot complete "
-                    "successfully. "
+                    "The argument to " STDEXEC_PP_STRINGIZE(STDEXEC)  //
+                    "::sync_wait() is a sender that cannot complete successfully. "
                     "STDEXEC::sync_wait() requires a sender that can complete successfully in "
-                    "exactly one "
-                    "way. In other words, the sender's completion signatures must include exactly "
-                    "one "
-                    "signature of the form `set_value_t(value-types...)`.");
+                    "exactly one way. In other words, the sender's completion signatures must "
+                    "include exactly one signature of the form `set_value_t(value-types...)`.");
 
       static_assert(__success_completion_count <= 1,
-                    "The sender passed to STDEXEC::sync_wait() can complete successfully in "
-                    "more than one way. Use STDEXEC::sync_wait_with_variant() instead.");
+                    "The sender passed to " STDEXEC_PP_STRINGIZE(STDEXEC)  //
+                    "::sync_wait() can complete successfully in more than one way. "
+                    "Use " STDEXEC_PP_STRINGIZE(STDEXEC) "::sync_wait_"
+                                                         "with_variant() instead.");
 
       if constexpr (1 == __success_completion_count)
       {
@@ -240,10 +235,8 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
             {
               static_assert(STDEXEC::operation_state<__opstate_t>,
                             "The `connect` member function of the sender passed to "
-                            "STDEXEC::sync_wait() "
-                            "does not return an operation state. An operation state is required to "
-                            "have a "
-                            "no-throw .start() member function.");
+                            "STDEXEC::sync_wait() does not return an operation state. An operation "
+                            "state is required to have a no-throw .start() member function.");
             }
           }
           else
@@ -260,9 +253,9 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
         else if constexpr (!STDEXEC::__has_implementation_for<sync_wait_t, __domain_t, _CvSender>)
         {
           static_assert(STDEXEC::__has_implementation_for<sync_wait_t, __domain_t, _CvSender>,
-                        "The sender passed to STDEXEC::sync_wait() has a domain that does not "
-                        "provide a "
-                        "usable implementation for sync_wait().");
+                        "The sender passed to " STDEXEC_PP_STRINGIZE(STDEXEC)  //
+                        "::sync_wait() has a domain that does not provide a usable implementation "
+                        "for sync_wait().");
         }
         else
         {

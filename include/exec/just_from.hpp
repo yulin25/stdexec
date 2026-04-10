@@ -80,7 +80,7 @@ namespace experimental::execution
     template <class Rcvr, class Fn>
     struct _opstate
     {
-      using operation_state_concept = STDEXEC::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_tag;
 
       Rcvr _rcvr;
       Fn   _fn;
@@ -138,7 +138,7 @@ namespace experimental::execution
     template <class Fn>
     struct _sndr_base
     {
-      using sender_concept        = STDEXEC::sender_t;
+      using sender_concept        = STDEXEC::sender_tag;
       using completion_signatures = _completions<Fn>;
 
       STDEXEC_ATTRIBUTE(no_unique_address) JustTag _tag;
@@ -200,8 +200,8 @@ namespace experimental::execution
         using _completions = STDEXEC::__call_result_t<Fn, _probe_fn>;
         static_assert(STDEXEC::__is_instance_of<_completions, STDEXEC::completion_signatures>,
                       "The function passed to just_from, just_error_from, and just_stopped_from "
-                      "must return an "
-                      "instance of a specialization of STDEXEC::completion_signatures<>.");
+                      "must return an instance of a specialization of " STDEXEC_PP_STRINGIZE(
+                        STDEXEC) "::completion_signatures<>.");
         return _sndr<Fn>{
           {{}, static_cast<Fn&&>(fn)}
         };

@@ -207,11 +207,14 @@ namespace STDEXEC
   template <class... _What>
   extern _ERROR_<_What...> __ok_v<__mexception<_What...>>;
 
+  template <class... _What>
+  extern _ERROR_<_What...> __ok_v<__mexception<_What...> const>;
+
   template <class _Ty>
   using __ok_t = decltype(__ok_v<_Ty>);
 
   template <class... _Ts>
-  using __mfind_error = decltype((__msuccess(), ..., __ok_t<_Ts>()));
+  using __mfind_error = decltype((__ok_t<_Ts>(), ..., __msuccess()));
 
   template <class _Arg>
   concept __ok = STDEXEC_IS_SAME(__ok_t<_Arg>, __msuccess);
@@ -1031,6 +1034,9 @@ namespace STDEXEC
 
   template <class _Set, class... _Ty>
   concept __mset_contains = (STDEXEC_IS_BASE_OF(__mtype<_Ty>, _Set) && ...);
+
+  template <class _Set, class... _Ty>
+  using __mset_contains_t = __mbool<__mset_contains<_Set, _Ty...>>;
 
   struct __mset_nil;
 

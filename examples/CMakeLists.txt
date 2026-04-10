@@ -28,6 +28,8 @@ endfunction()
 function(def_example example)
     split(${example} target source)
     add_executable(${target} ${source})
+    target_compile_options(${target} PUBLIC
+        $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized>) # warnings being emitted from stdlib headers, why?
     target_link_libraries(${target}
         PRIVATE STDEXEC::stdexec
                 stdexec_executable_flags
@@ -39,6 +41,7 @@ set(stdexec_examples
                                       "example.hello_world : hello_world.cpp"
                                        "example.hello_coro : hello_coro.cpp"
                                             "example.scope : scope.cpp"
+                                           "example.sudoku : sudoku.cpp"
                                             "example.retry : retry.cpp"
                                              "example.then : then.cpp"
                            "example.server_theme.let_value : server_theme/let_value.cpp"
@@ -66,6 +69,12 @@ endif ()
 foreach(example ${stdexec_examples})
   def_example(${example})
 endforeach()
+
+if (STDEXEC_BUILD_PARALLEL_SCHEDULER)
+  target_link_libraries(example.sudoku PRIVATE STDEXEC::parallel_scheduler)
+else()
+  target_compile_definitions(example.sudoku PRIVATE STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
+endif()
 
 if(STDEXEC_ENABLE_CUDA)
   add_subdirectory(nvexec)

@@ -64,7 +64,7 @@ namespace STDEXEC
 
   namespace __task
   {
-    using namespace system_context_replaceability;
+    using namespace parallel_scheduler_replacement;
 
     // The concrete type-erased sender returned by task_scheduler::schedule()
     struct __sender;
@@ -147,7 +147,7 @@ namespace STDEXEC
       };
 
      public:
-      using sender_concept = sender_t;
+      using sender_concept = sender_tag;
 
       template <class _Rcvr>
       [[nodiscard]]
@@ -225,7 +225,7 @@ namespace STDEXEC
     class __backend_for;
 
    public:
-    using scheduler_concept = scheduler_t;
+    using scheduler_concept = scheduler_tag;
 
     template <__not_same_as<task_scheduler> _Sch, class _Alloc = std::allocator<_Sch>>
       requires __infallible_scheduler<_Sch, __task::__env_t<true>>
@@ -289,7 +289,7 @@ namespace STDEXEC
     class __any_opstate
     {
      public:
-      using operation_state_concept = operation_state_t;
+      using operation_state_concept = operation_state_tag;
 
       constexpr explicit __any_opstate(__any_task_scheduler_backend __backend,
                                        _Rcvr                        __rcvr) noexcept
@@ -312,7 +312,7 @@ namespace STDEXEC
     //! @brief A type-erased sender returned by task_scheduler::schedule().
     struct __sender
     {
-      using sender_concept = sender_t;
+      using sender_concept = sender_tag;
 
       constexpr explicit __sender(task_scheduler __sch) noexcept
         : __attrs_{std::move(__sch)}
@@ -356,7 +356,7 @@ namespace STDEXEC
     template <class _BulkTag, class _Policy, class _Fn, class _Rcvr, class _Values>
     struct __bulk_receiver
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       template <class... _As>
       constexpr void set_value(_As&&... __as) noexcept
@@ -566,7 +566,7 @@ namespace STDEXEC
     template <class _BulkTag, class _Policy, class _Sndr, class _Fn, class _Rcvr>
     struct __bulk_opstate
     {
-      using operation_state_concept = operation_state_t;
+      using operation_state_concept = operation_state_tag;
 
       constexpr explicit __bulk_opstate(_Sndr&&                      __sndr,
                                         size_t                       __shape,
@@ -597,7 +597,7 @@ namespace STDEXEC
     template <class _Sndr>
     struct __bulk_sender
     {
-      using sender_concept = sender_t;
+      using sender_concept = sender_tag;
 
       constexpr explicit __bulk_sender(_Sndr __sndr, task_scheduler __sch)
         : __sndr_(std::move(__sndr))
@@ -788,8 +788,8 @@ namespace STDEXEC
       , __sch_(std::move(__sch))
     {}
 
-    constexpr void schedule(system_context_replaceability::receiver_proxy& __rcvr_proxy,
-                            std::span<std::byte>                           __storage) noexcept
+    constexpr void schedule(parallel_scheduler_replacement::receiver_proxy& __rcvr_proxy,
+                            std::span<std::byte>                            __storage) noexcept
     {
       // Check whether the receiver's stop token is unstoppable. If so, we can connect the
       // schedule sender with a receiver that doesn't propagate stop requests, which may
@@ -809,8 +809,8 @@ namespace STDEXEC
     }
 
     constexpr void
-    schedule_bulk_chunked(size_t                                                   __count,
-                          system_context_replaceability::bulk_item_receiver_proxy& __rcvr_proxy,
+    schedule_bulk_chunked(size_t                                                    __count,
+                          parallel_scheduler_replacement::bulk_item_receiver_proxy& __rcvr_proxy,
                           std::span<std::byte> __storage) noexcept
     {
       auto __sndr = STDEXEC::bulk_chunked(__task::__just_with_scheduler{__sch_},
@@ -821,8 +821,8 @@ namespace STDEXEC
     }
 
     constexpr void
-    schedule_bulk_unchunked(size_t                                                   __count,
-                            system_context_replaceability::bulk_item_receiver_proxy& __rcvr_proxy,
+    schedule_bulk_unchunked(size_t                                                    __count,
+                            parallel_scheduler_replacement::bulk_item_receiver_proxy& __rcvr_proxy,
                             std::span<std::byte> __storage) noexcept
     {
       auto __sndr = STDEXEC::bulk_unchunked(__task::__just_with_scheduler{__sch_},
@@ -847,20 +847,20 @@ namespace STDEXEC
 
   namespace __detail
   {
-    // Implementation of the get_scheduler_t query for __receiver_proxy_base and
+    // Implementation of the get_start_scheduler_t query for __receiver_proxy_base and
     // __proxy_env from __parallel_scheduler_backend.hpp.
     template <class _Rcvr, class _Proxy, bool _Infallible>
     constexpr void
-    __receiver_proxy_base<_Rcvr, _Proxy, _Infallible>::__query(get_scheduler_t,
+    __receiver_proxy_base<_Rcvr, _Proxy, _Infallible>::__query(get_start_scheduler_t,
                                                                __type_index __value_type,
                                                                void*        __dest) const noexcept
     {
       if (__value_type == __mtypeid<task_scheduler>)
       {
         auto& __val = *static_cast<std::optional<task_scheduler>*>(__dest);
-        if constexpr (__callable<get_scheduler_t, env_of_t<_Rcvr>>)
+        if constexpr (__callable<get_start_scheduler_t, env_of_t<_Rcvr>>)
         {
-          __val.emplace(get_scheduler(get_env(__rcvr_)));
+          __val.emplace(get_start_scheduler(get_env(__rcvr_)));
         }
         else
         {

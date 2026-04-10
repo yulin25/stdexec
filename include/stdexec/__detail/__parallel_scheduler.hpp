@@ -20,28 +20,44 @@
 
 #include "__bulk.hpp"
 #include "__domain.hpp"
+#include "__parallel_scheduler_replacement_api.hpp"
 #include "__schedulers.hpp"
 #include "__sender_introspection.hpp"
 #include "__senders.hpp"
-#include "__system_context_replaceability_api.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
 
 #include <optional>
 #include <utility>
 
+#if defined(STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE)                                               \
+  || defined(STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN)                                             \
+  || defined(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE)                                         \
+  || defined(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN)
+#  error STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE, \
+        STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN, \
+        STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE, and \
+        STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN \
+        have been renamed to \
+        STDEXEC_PARALLEL_SCHEDULER_SCHEDULE_OP_SIZE, \
+        STDEXEC_PARALLEL_SCHEDULER_SCHEDULE_OP_ALIGN, \
+        STDEXEC_PARALLEL_SCHEDULER_BULK_SCHEDULE_OP_SIZE, and \
+        STDEXEC_PARALLEL_SCHEDULER_BULK_SCHEDULE_OP_ALIGN, \
+        respectively.
+#endif
+
 // TODO: make these configurable by providing policy to the system context
-#ifndef STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE
-#  define STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE 72
+#ifndef STDEXEC_PARALLEL_SCHEDULER_SCHEDULE_OP_SIZE
+#  define STDEXEC_PARALLEL_SCHEDULER_SCHEDULE_OP_SIZE 72
 #endif
-#ifndef STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN
-#  define STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN 8
+#ifndef STDEXEC_PARALLEL_SCHEDULER_SCHEDULE_OP_ALIGN
+#  define STDEXEC_PARALLEL_SCHEDULER_SCHEDULE_OP_ALIGN 8
 #endif
-#ifndef STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE
-#  define STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE 152
+#ifndef STDEXEC_PARALLEL_SCHEDULER_BULK_SCHEDULE_OP_SIZE
+#  define STDEXEC_PARALLEL_SCHEDULER_BULK_SCHEDULE_OP_SIZE 152
 #endif
-#ifndef STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN
-#  define STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN 8
+#ifndef STDEXEC_PARALLEL_SCHEDULER_BULK_SCHEDULE_OP_ALIGN
+#  define STDEXEC_PARALLEL_SCHEDULER_BULK_SCHEDULE_OP_ALIGN 8
 #endif
 
 namespace STDEXEC
@@ -85,7 +101,7 @@ namespace STDEXEC
   namespace __detail
   {
     using __backend_ptr_t =
-      std::shared_ptr<system_context_replaceability::parallel_scheduler_backend>;
+      std::shared_ptr<parallel_scheduler_replacement::parallel_scheduler_backend>;
 
     template <class _SetTag>
     auto __make_parallel_scheduler_from(_SetTag, __backend_ptr_t) noexcept -> parallel_scheduler;
@@ -157,7 +173,7 @@ namespace STDEXEC
 
     /// The operation state used to execute the work described by this sender.
     template <class _Rcvr>
-    struct __system_op : __immovable
+    struct __system_op
     {
       /// Constructs `this` from `__rcvr` and `__sched_impl`.
       __system_op(_Rcvr&& __rcvr, __backend_ptr_t __sched_impl)
@@ -169,6 +185,8 @@ namespace STDEXEC
         auto* __p = &__preallocated_.__as<__backend_ptr_t>();
         std::construct_at(__p, std::move(__sched_impl));
       }
+
+      STDEXEC_IMMOVABLE(__system_op);
 
       /// Starts the work stored in `this`.
       void start() & noexcept
@@ -191,8 +209,8 @@ namespace STDEXEC
       /// Preallocated space for storing the operation state on the implementation size.
       /// We also store here the backend interface for the scheduler before we actually
       /// start the operation.
-      __aligned_storage<STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE,
-                        STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN>
+      __aligned_storage<STDEXEC_PARALLEL_SCHEDULER_SCHEDULE_OP_SIZE,
+                        STDEXEC_PARALLEL_SCHEDULER_SCHEDULE_OP_ALIGN>
         __preallocated_;
     };
   }  // namespace __detail
@@ -202,7 +220,7 @@ namespace STDEXEC
   {
    public:
     /// Marks this type as being a sender
-    using sender_concept = sender_t;
+    using sender_concept = sender_tag;
 
     /// Implementation __detail. Constructs the sender to wrap `__impl`.
     explicit __parallel_sender(__detail::__backend_ptr_t __impl)
@@ -306,7 +324,7 @@ namespace STDEXEC
     /// This represents the base class that abstracts the storage of the values sent by the previous sender.
     /// Derived class will properly implement the receiver methods.
     template <class _Previous>
-    struct __forward_args_receiver : system_context_replaceability::bulk_item_receiver_proxy
+    struct __forward_args_receiver : parallel_scheduler_replacement::bulk_item_receiver_proxy
     {
       using __storage_t = __detail::__sender_data_t<_Previous>;
 
@@ -460,7 +478,7 @@ namespace STDEXEC
     struct __bulk_intermediate_receiver
     {
       /// Declare that this is a `receiver`.
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       /// Object that holds the relevant data for the entire bulk operation.
       _BulkState& __state_;
@@ -548,9 +566,10 @@ namespace STDEXEC
       using __inner_op_state = connect_result_t<_Previous, __intermediate_receiver_t>;
 
       static constexpr size_t _PreallocatedSize =
-        (std::max) (size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE), sizeof(__inner_op_state));
+        (std::max) (size_t(STDEXEC_PARALLEL_SCHEDULER_BULK_SCHEDULE_OP_SIZE),
+                    sizeof(__inner_op_state));
       static constexpr size_t _PreallocatedAlign =
-        (std::max) (size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN),
+        (std::max) (size_t(STDEXEC_PARALLEL_SCHEDULER_BULK_SCHEDULE_OP_ALIGN),
                     alignof(__inner_op_state));
 
       /// Preallocated space for storing the inner operation state, and then storage space for the backend call.
@@ -615,7 +634,7 @@ namespace STDEXEC
 
    public:
     /// Marks this type as being a sender
-    using sender_concept = sender_t;
+    using sender_concept = sender_tag;
 
     /// Constructs `this`.
     __parallel_bulk_sender(parallel_scheduler __sched,
@@ -674,7 +693,7 @@ namespace STDEXEC
 
   inline auto get_parallel_scheduler() -> parallel_scheduler
   {
-    auto __impl = system_context_replaceability::query_parallel_scheduler_backend();
+    auto __impl = parallel_scheduler_replacement::query_parallel_scheduler_backend();
     if (!__impl)
     {
       STDEXEC_THROW(std::runtime_error{"No system context implementation found"});
@@ -746,7 +765,7 @@ namespace STDEXEC
   {
     if constexpr (__completes_on<_Sender, parallel_scheduler, _Env>)
     {
-      auto __sched = get_scheduler(__env);
+      auto __sched = get_completion_scheduler<set_value_t>(get_env(__sndr), __env);
       return __apply(__transform_parallel_bulk_sender{__sched}, static_cast<_Sender&&>(__sndr));
     }
     else
@@ -763,7 +782,18 @@ namespace STDEXEC
   }
 }  // namespace STDEXEC
 
-#if defined(STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY)
-#  define STDEXEC_SYSTEM_CONTEXT_INLINE inline
-#  include "__system_context_default_impl_entry.hpp"
+#if defined(STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
+#  define STDEXEC_PARALLEL_SCHEDULER_INLINE inline
+#  include "__parallel_scheduler_default_impl_entry.hpp"
+#elif defined(STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY)
+#  if STDEXEC_MSVC()
+#    pragma message("WARNING: STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY has been renamed to "             \
+                    "STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY.")
+#  else
+#    warning "STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY has been renamed to "                             \
+             "STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY."
+#  endif
+#  define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY
+#  define STDEXEC_PARALLEL_SCHEDULER_INLINE inline
+#  include "__parallel_scheduler_default_impl_entry.hpp"
 #endif

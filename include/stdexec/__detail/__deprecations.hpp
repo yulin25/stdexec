@@ -25,7 +25,8 @@ namespace STDEXEC
   inline constexpr __execute_may_block_caller_t const & execute_may_block_caller =
     __execute_may_block_caller;
 
-  using empty_env [[deprecated("STDEXEC::empty_env is now spelled STDEXEC::env<>")]] = env<>;
+  using empty_env [[deprecated(
+    "STDEXEC::empty_env is now spelled " STDEXEC_PP_STRINGIZE(STDEXEC) "::env<>")]] = env<>;
 
   using dependent_completions [[deprecated("use dependent_sender_error instead of "
                                            "dependent_completions")]] = dependent_sender_error;
@@ -48,6 +49,10 @@ namespace STDEXEC
   using transfer_t [[deprecated("transfer_t has been renamed continues_on_t")]] = continues_on_t;
   [[deprecated("transfer has been renamed continues_on")]]
   inline constexpr continues_on_t const & transfer = continues_on;
+
+  using affine_on_t [[deprecated("affine_on_t has been renamed affine_t")]] = affine_t;
+  [[deprecated("affine_on has been renamed affine")]]
+  inline constexpr affine_t const & affine_on = affine;
 
   using transfer_just_t [[deprecated]] = __transfer_just_t;
   [[deprecated]]

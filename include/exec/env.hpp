@@ -123,8 +123,15 @@ namespace experimental::execution
     struct read_with_default_t;
 
     template <class _Tag, class _Default, class _Receiver>
-    struct __opstate : __immovable
+    struct __opstate
     {
+      constexpr explicit __opstate(_Default&& __default, _Receiver&& __rcvr)
+        : __default_(static_cast<_Default&&>(__default))
+        , __rcvr_(static_cast<_Receiver&&>(__rcvr))
+      {}
+
+      STDEXEC_IMMOVABLE(__opstate);
+
       constexpr void start() & noexcept
       {
         STDEXEC_TRY
@@ -153,7 +160,7 @@ namespace experimental::execution
     template <class _Tag, class _Default>
     struct __sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <class _Env>
       using __value_t =
@@ -171,7 +178,9 @@ namespace experimental::execution
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           -> __opstate<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver>
       {
-        return {{}, static_cast<_Self&&>(__self).__default_, static_cast<_Receiver&&>(__rcvr)};
+        using __opstate_t = __opstate<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver>;
+        return __opstate_t{static_cast<_Self&&>(__self).__default_,
+                           static_cast<_Receiver&&>(__rcvr)};
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
@@ -198,9 +207,10 @@ namespace experimental::execution
 
   inline constexpr __read_with_default::__read_with_default_t read_with_default{};
 
-  [[deprecated("exec::write has been renamed to STDEXEC::write_env")]]
+  [[deprecated("exec::write has been renamed to " STDEXEC_PP_STRINGIZE(STDEXEC) "::write_env")]]
   inline constexpr STDEXEC::__write_env_t write{};
-  [[deprecated("exec::write_env has been moved to the STDEXEC:: namespace")]]
+  [[deprecated("exec::write_env has been moved to the " STDEXEC_PP_STRINGIZE(STDEXEC) ":: "
+                                                                                      "namespace")]]
   inline constexpr STDEXEC::__write_env_t write_env{};
 
   namespace __write_attrs
@@ -210,7 +220,7 @@ namespace experimental::execution
     template <class _Sender, class _Attrs>
     struct __sender
     {
-      using sender_concept = sender_t;
+      using sender_concept = sender_tag;
 
       constexpr auto get_env() const noexcept -> __join_env_t<_Attrs const &, env_of_t<_Sender>>
       {

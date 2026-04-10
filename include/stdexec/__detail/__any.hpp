@@ -29,7 +29,6 @@
 #include <bit>
 #include <exception>
 #include <memory>
-#include <new>
 #include <span>
 #include <type_traits>
 #include <utility>
@@ -456,8 +455,8 @@ namespace STDEXEC::__any
   template <class _Value>
   struct __box
   {
-    constexpr explicit __box(_Value __value) noexcept
-      : __val_(std::move(__value))
+    constexpr explicit __box(_Value __val) noexcept
+      : __val_(std::move(__val))
     {}
 
     template <class... _Args>
@@ -570,12 +569,12 @@ namespace STDEXEC::__any
   constexpr _Value &__emplace_into(_Allocator const    &__alloc,
                                    __iroot            *&__root_ptr,
                                    std::span<std::byte> __buff,
-                                   _CvRefValue        &&__value)
+                                   _CvRefValue        &&__val)
   {
     return STDEXEC::__any::__emplace_into<_Value>(__alloc,
                                                   __root_ptr,
                                                   __buff,
-                                                  static_cast<_CvRefValue &&>(__value));
+                                                  static_cast<_CvRefValue &&>(__val));
   }
 
   // reference
@@ -667,6 +666,9 @@ namespace STDEXEC::__any
     : _Interface<__mcall1<__bases_of<_Interface>, __value_proxy_root<_Interface>>>
   {};
 
+  template <class _Interface, __root_kind _RootKind>
+  concept __has_root_kind = _Interface::__root_kind == _RootKind;
+
   //////////////////////////////////////////////////////////////////////////////////////////
   //! __interface_base
   template <template <class> class _Interface,
@@ -693,35 +695,40 @@ namespace STDEXEC::__any
                                                  ? _BufferAlignment
                                                  : _Base::__buffer_alignment;
 
+    static constexpr bool __can_slice = __extension_of<_Base, __imovable>
+                                     && (__has_root_kind<_Base, __root_kind::__value>
+                                         || __extension_of<_Base, __icopyable>);
+
     static constexpr bool __nothrow_slice =
       STDEXEC::__any::__nothrow_slice<__this_interface_type, _Base, __buffer_size>;
 
     //! @pre !empty(*this)
-    constexpr virtual void
-    __slice_to_(__value_proxy_root<_Interface> &__result) noexcept(__nothrow_slice)
+    constexpr virtual void __slice_to_(__value_proxy_root<_Interface> &__result)  //
+      noexcept(__nothrow_slice)
     {
+      STDEXEC_ASSERT(__can_slice);
       STDEXEC_ASSERT(!__empty(*this));
-      if constexpr (_Base::__box_kind != __box_kind::__abstract)
+
+      if constexpr (_Base::__box_kind == __box_kind::__abstract || !__can_slice)
       {
-        using __root_interface_t = _Base::__interface_type;
-        constexpr bool __is_root_interface =
-          std::same_as<__root_interface_t, __this_interface_type>;
-        STDEXEC_ASSERT(!__is_root_interface);
-        if constexpr (!__is_root_interface)
-        {
-          if constexpr (_Base::__box_kind == __box_kind::__proxy)
-          {
-            __value(*this).__slice_to_(__result);
-            __reset(*this);
-          }
-          else  // if constexpr (_Base::__box_kind == __box_kind::__object)
-          {
-            // Move from type-erased values, but not from type-erased references
-            constexpr bool __is_value = (_Base::__root_kind == __root_kind::__value);
-            // potentially throwing:
-            __result.emplace(STDEXEC_DECAY_COPY(STDEXEC::__move_if<__is_value>(__value(*this))));
-          }
-        }
+        STDEXEC_ASSERT(!"should never be here: __slice_to_ called on a type that cannot be sliced");
+        __std::unreachable();
+      }
+      else if constexpr (__same_as<typename _Base::__interface_type, __this_interface_type>)
+      {
+        STDEXEC_ASSERT(!"we should be calling __move_to or __copy_to, not __slice_to_");
+        __std::unreachable();
+      }
+      else if constexpr (_Base::__box_kind == __box_kind::__proxy)
+      {
+        __value(*this).__slice_to_(__result);
+        __reset(*this);
+      }
+      else
+      {
+        // Move from type-erased values, but not from type-erased references.
+        STDEXEC_CONSTEXPR_LOCAL bool __is_value = _Base::__root_kind == __root_kind::__value;
+        __result.emplace(__value(STDEXEC::__maybe_move<__is_value>(*this)));  // could throw
       }
     }
 
@@ -801,9 +808,9 @@ namespace STDEXEC::__any
     : __value_root<_Interface, _Value>
     , private _Allocator
   {
-    constexpr explicit __value_root_with_allocator(_Value            __value,
+    constexpr explicit __value_root_with_allocator(_Value            __val,
                                                    _Allocator const &__alloc = _Allocator())
-      : __value_root<_Interface, _Value>(std::move(__value))
+      : __value_root<_Interface, _Value>(std::move(__val))
       , _Allocator(__alloc)
     {}
 
@@ -909,14 +916,14 @@ namespace STDEXEC::__any
           return std::swap(__this_ptr, __that_ptr);
 
         if (__this_ptr == nullptr)
-          return __value(__other).__move_to(__root_ptr_, __buff_);
+          return __other.__move_to_empty(*this);
 
         if (__that_ptr == nullptr)
-          return __value(*this).__move_to(__other.__root_ptr_, __other.__buff_);
+          return (*this).__move_to_empty(__other);
 
-        auto temp = std::move(*this);
-        __value(__other).__move_to(__root_ptr_, __buff_);
-        __value(temp).__move_to(__other.__root_ptr_, __other.__buff_);
+        auto __temp = std::move(*this);
+        __other.__move_to_empty(*this);
+        __temp.__move_to_empty(__other);
       }
     }
 
@@ -928,10 +935,10 @@ namespace STDEXEC::__any
     }
 
     template <int = 0, class _CvRefValue, class _Value = std::decay_t<_CvRefValue>>
-    constexpr _Value &emplace(_CvRefValue &&__value)
+    constexpr _Value &emplace(_CvRefValue &&__val)
     {
       __reset_();
-      return __emplace_<_Value>(static_cast<_CvRefValue &&>(__value));
+      return __emplace_<_Value>(static_cast<_CvRefValue &&>(__val));
     }
 
     [[nodiscard]]
@@ -975,6 +982,38 @@ namespace STDEXEC::__any
       return __emplace_<_Value>(std::allocator_arg, __alloc, static_cast<_Args &&>(__args)...);
     }
 
+    template <class _Allocator, class _Fn, class... _Args>
+    constexpr auto
+    __emplace_from_(std::allocator_arg_t, _Allocator const &__alloc, _Fn &&__fn, _Args &&...__args)
+      -> __call_result_t<_Fn, _Args...> &
+    {
+      static_assert(__simple_allocator<_Allocator>);
+      using __value_type = __call_result_t<_Fn, _Args...>;
+      using __model_type = __value_model<_Interface, __value_type, _Allocator>;
+      auto &__model      =  //
+        STDEXEC::__any::__emplace_into<__model_type>(__alloc,
+                                                     __root_ptr_,
+                                                     __buff_,
+                                                     std::allocator_arg,
+                                                     __alloc,
+                                                     __in_place_from,
+                                                     static_cast<_Fn &&>(__fn),
+                                                     static_cast<_Args &&>(__args)...);
+      return __value(__model);
+    }
+
+    template <class _Fn, class... _Args>
+    constexpr auto
+    __emplace_from_(_Fn &&__fn, _Args &&...__args) -> __call_result_t<_Fn, _Args...> &
+    {
+      using __value_type = __call_result_t<_Fn, _Args...>;
+      std::allocator<__value_type> const __alloc{};
+      return __emplace_from_(std::allocator_arg,
+                             __alloc,
+                             static_cast<_Fn &&>(__fn),
+                             static_cast<_Args &&>(__args)...);
+    }
+
     template <class _Self>
     [[nodiscard]]
     static constexpr auto __value_(_Self &&__self) noexcept -> auto &&
@@ -1008,6 +1047,31 @@ namespace STDEXEC::__any
       else
       {
         return *__std::start_lifetime_as<__tagged_ptr>(__buff_) == nullptr;
+      }
+    }
+
+    constexpr void __move_to_empty(__value_proxy_root &__other) noexcept
+      requires __movable
+    {
+      STDEXEC_IF_CONSTEVAL
+      {
+        __other.__root_ptr_ = std::exchange(__root_ptr_, nullptr);
+      }
+      else
+      {
+        STDEXEC_ASSERT(!__empty(*this));
+        STDEXEC_ASSERT(__empty(__other));
+        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
+        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__buff_);
+        if (__this_ptr.__is_tagged())
+        {
+          __that_ptr = std::exchange(__this_ptr, nullptr);
+        }
+        else
+        {
+          __value(*this).__move_to(__other.__root_ptr_, __other.__buff_);
+          __reset(*this);
+        }
       }
     }
 
@@ -1155,19 +1219,21 @@ namespace STDEXEC::__any
     [[nodiscard]]
     static constexpr auto __value_(_Self &&__self) noexcept -> auto &&
     {
-      using __value_ref_t = __copy_cvref_t<_Self &&, __value_type>;
+      using __from_ref_t
+        [[maybe_unused]] = __if_c<std::is_lvalue_reference_v<_Self>, _Value &, _Value &&>;
+      using __to_ref_t   = __copy_cvref_t<_Self &&, __value_type>;
 
       STDEXEC_IF_NOT_CONSTEVAL
       {
-        STDEXEC_ASSERT((__std::convertible_to<_Value &, __value_ref_t>)
-                       && "attempt to get a mutable reference from a const reference, or an rvalue "
-                          "from an lvalue");
+        // We permit getting an rvalue reference when _Self&& is also an rvalue reference.
+        STDEXEC_ASSERT((__std::convertible_to<__from_ref_t, __to_ref_t>)
+                       && "attempt to get a mutable reference from a const reference");
       }
 
       if (__self.__is_indirect_())
-        return static_cast<__value_ref_t>(const_cast<__value_ref_t &>(__self.__dereference_()));
+        return static_cast<__to_ref_t>(const_cast<__to_ref_t &>(__self.__dereference_()));
       else
-        return static_cast<__value_ref_t>(const_cast<__value_ref_t &>(*__self.__get_value_ptr_()));
+        return static_cast<__to_ref_t>(const_cast<__to_ref_t &>(*__self.__get_value_ptr_()));
     }
 
     [[nodiscard]]
@@ -1258,7 +1324,7 @@ namespace STDEXEC::__any
     __reference_proxy_root(__reference_proxy_root &&)            = delete;
     __reference_proxy_root &operator=(__reference_proxy_root &&) = delete;
 
-    constexpr void __copy(__reference_proxy_root const &__other) noexcept
+    constexpr void __copy_from(__reference_proxy_root const &__other) noexcept
     {
       STDEXEC_IF_CONSTEVAL
       {
@@ -1344,14 +1410,14 @@ namespace STDEXEC::__any
     }
 
     template <class _CvValue>
-    constexpr void __value_bind_(_CvValue &__value) noexcept
+    constexpr void __value_bind_(_CvValue &__val) noexcept
     {
       static_assert(!__extension_of<_CvValue, _Interface>);
       using __model_type = __reference_model<_Interface, _CvValue>;
       STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
                                                    __root_ptr_,
                                                    __buff_,
-                                                   std::addressof(__value),
+                                                   std::addressof(__val),
                                                    static_cast<__iroot *>(nullptr));
     }
 
@@ -1689,11 +1755,11 @@ namespace STDEXEC::__any
     // Construct from an object that implements the interface (and is not an any<>
     // itself)
     template <__model_of<_Interface> _Value, class _Allocator = std::allocator<_Value>>
-    constexpr __any(_Value __value, _Allocator const &__alloc = _Allocator())
+    constexpr __any(_Value __val, _Allocator const &__alloc = _Allocator())
       : __any()
     {
       static_assert(__simple_allocator<_Allocator>);
-      (*this).template __emplace_<_Value>(std::allocator_arg, __alloc, std::move(__value));
+      (*this).template __emplace_<_Value>(std::allocator_arg, __alloc, std::move(__val));
     }
 
     template <class _Value, class... _Args>
@@ -1707,10 +1773,7 @@ namespace STDEXEC::__any
     constexpr explicit __any(__in_place_from_t, _Fn &&__fn, _Args &&...__args)
       : __any()
     {
-      using __value_t = __decay_t<__call_result_t<_Fn, _Args...>>;
-      (*this).template __emplace_<__value_t>(
-        __emplace_from{[&]() noexcept(__nothrow_callable<_Fn, _Args...>)
-                       { return static_cast<_Fn &&>(__fn)(static_cast<_Args &&>(__args)...); }});
+      (*this).__emplace_from_(static_cast<_Fn &&>(__fn), static_cast<_Args &&>(__args)...);
     }
 
     // Implicit derived-to-base conversion constructor
@@ -1719,7 +1782,7 @@ namespace STDEXEC::__any
             && (_Other::__root_kind == __root_kind::__value)
     constexpr __any(_Interface<_Other> __other) noexcept(__as_large_as<_Other>)
     {
-      (*this).__assign(std::move(__other));
+      (*this).__assign_from(std::move(__other));
     }
 
     template <class _Other>
@@ -1728,15 +1791,15 @@ namespace STDEXEC::__any
     constexpr __any(_Interface<_Other> const &__other)
     {
       _Interface<_Other> __tmp;
-      __tmp.__copy(__other);
-      (*this).__assign(std::move(__tmp));
+      __tmp.__copy_from(__other);
+      (*this).__assign_from(std::move(__tmp));
     }
 
     template <__model_of<_Interface> _Value>
-    constexpr __any &operator=(_Value __value)
+    constexpr __any &operator=(_Value __val)
     {
       __reset(*this);
-      (*this).template __emplace_<_Value>(std::move(__value));
+      (*this).template __emplace_<_Value>(std::move(__val));
       return *this;
     }
 
@@ -1747,7 +1810,7 @@ namespace STDEXEC::__any
     constexpr __any &operator=(_Interface<_Other> __other) noexcept(__as_large_as<_Other>)
     {
       __reset(*this);
-      (*this).__assign(std::move(__other));
+      (*this).__assign_from(std::move(__other));
       return *this;
     }
 
@@ -1761,10 +1824,10 @@ namespace STDEXEC::__any
         return *this;
 
       _Interface<_Other> __tmp;
-      __tmp.__copy(__other);
+      __tmp.__copy_from(__other);
 
       __reset(*this);
-      (*this).__assign(std::move(__tmp));
+      (*this).__assign_from(std::move(__tmp));
       return *this;
     }
 
@@ -1775,32 +1838,38 @@ namespace STDEXEC::__any
     }
 
    private:
-    // Assigning from a type that __extends _Interface. _Its buffer may be larger than
+    // Assigning from a type that __extends _Interface. Its buffer may be larger than
     // ours, or it may be a reference type, so we can be only conditionally
     // noexcept.
     template <class _Other>
       requires __extension_of<_Interface<_Other>, __imovable>
-    constexpr void __assign(_Interface<_Other> &&__other) noexcept(__as_large_as<_Other>)
+    constexpr void __assign_from(_Interface<_Other> &&__other) noexcept(__as_large_as<_Other>)
     {
-      constexpr bool __ptr_convertible = std::derived_from<_Other, __iabstract<_Interface>>;
+      using __root_t = __value_proxy_root<_Interface>;
+      STDEXEC_CONSTEXPR_LOCAL
+      bool __is_value = _Other::__root_kind == __root_kind::__value;
+      STDEXEC_CONSTEXPR_LOCAL
+      bool __ptr_convertible = std::derived_from<_Other, __iabstract<_Interface>>;
 
       if (__empty(__other))
-      {
         return;
-      }
-      else if constexpr (_Other::__root_kind == __root_kind::__reference || !__ptr_convertible)
-      {  // NOLINT(bugprone-branch-clone)
+
+      if constexpr (!__is_value || !__ptr_convertible)  // compile-time condition
+      {                                                 // NOLINT(bugprone-branch-clone)
         return __other.__slice_to_(*this);
       }
-      else if (__other.__in_situ_())
+      else if (__other.__in_situ_())  // runtime condition
       {
-        return __other.__slice_to_(*this);
+        using __other_interface_t = _Other::__interface_type;
+        if constexpr (__same_as<__other_interface_t, __iabstract<_Interface>>)
+          static_cast<__root_t &>(*this) = static_cast<__root_t &&>(__other);
+        else
+          return __other.__slice_to_(*this);
       }
-      else
-        STDEXEC_IF_CONSTEVAL
-        {
-          (*this).__root_ptr_ = std::exchange(__other.__root_ptr_, nullptr);
-        }
+      else STDEXEC_IF_CONSTEVAL
+      {
+        (*this).__root_ptr_ = std::exchange(__other.__root_ptr_, nullptr);
+      }
       else
       {
         auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>((*this).__buff_);
@@ -1826,7 +1895,7 @@ namespace STDEXEC::__any
     constexpr __any_ptr_base(__any_ptr_base const &__other) noexcept
       : __reference_()
     {
-      __reference_.__copy(__other.__reference_);
+      __reference_.__copy_from(__other.__reference_);
     }
 
     template <template <class> class _OtherInterface>
@@ -1840,7 +1909,7 @@ namespace STDEXEC::__any
     constexpr __any_ptr_base &operator=(__any_ptr_base const &__other) noexcept
     {
       __reset(__reference_);
-      __reference_.__copy(__other.__reference_);
+      __reference_.__copy_from(__other.__reference_);
       return *this;
     }
 
@@ -1910,7 +1979,8 @@ namespace STDEXEC::__any
       // in the case where _CvReferenceProxy is a base class of __model_type, we can simply
       // downcast and copy the model directly.
       else if constexpr (std::derived_from<__model_type, _CvReferenceProxy>)
-        __reference_.__copy(*STDEXEC::__polymorphic_downcast<__model_type const *>(__proxy_ptr));
+        __reference_.__copy_from(
+          *STDEXEC::__polymorphic_downcast<__model_type const *>(__proxy_ptr));
       // _Otherwise, we are assigning from a derived reference to a base reference, and the
       // __other reference is indirect (i.e., it holds a __reference_model in its buffer). We
       // need to copy the referant model.

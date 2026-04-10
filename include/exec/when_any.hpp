@@ -87,12 +87,14 @@ namespace experimental::execution
     }
 
     template <class _Receiver, class _ResultVariant>
-    struct __opstate_base : __immovable
+    struct __opstate_base
     {
       __opstate_base(_Receiver&& __rcvr, std::size_t __n_senders)
         : __count_{__n_senders}
         , __rcvr_{static_cast<_Receiver&&>(__rcvr)}
       {}
+
+      STDEXEC_IMMOVABLE(__opstate_base);
 
       using __on_stop =
         stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>&>, __forward_stop_request<>>;
@@ -160,7 +162,7 @@ namespace experimental::execution
     struct __receiver
     {
      public:
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       explicit __receiver(__opstate_base<_Receiver, _ResultVariant>* __op) noexcept
         : __op_{__op}
@@ -211,6 +213,8 @@ namespace experimental::execution
         , __ops_{STDEXEC::connect(static_cast<_CvSenders&&>(__sndrs), __receiver_t{this})...}
       {}
 
+      STDEXEC_IMMOVABLE(__opstate);
+
       void start() & noexcept
       {
         this->__on_stop_.emplace(get_stop_token(get_env(this->__rcvr_)),
@@ -245,7 +249,7 @@ namespace experimental::execution
       using __completions_t =
         __minvoke<__completions_fn<_Env...>, __copy_cvref_t<_Self, _Senders>...>;
      public:
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <__not_decays_to<__sender>... _CvSenders>
       explicit __sender(_CvSenders&&... __sndrs)

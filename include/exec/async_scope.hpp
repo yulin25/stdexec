@@ -110,7 +110,7 @@ namespace experimental::execution
     template <class _Constrained>
     struct __when_empty_sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <class _Self, class _Receiver>
       using __when_empty_opstate_t =
@@ -143,7 +143,7 @@ namespace experimental::execution
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::nest implementation
     template <class _Receiver>
-    struct __nest_opstate_base : __immovable
+    struct __nest_opstate_base
     {
       __impl const * __scope_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -153,7 +153,7 @@ namespace experimental::execution
     template <class _Receiver>
     struct __nest_receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       static void __complete(__impl const * __scope) noexcept
       {
@@ -222,9 +222,11 @@ namespace experimental::execution
 
       template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
       constexpr explicit __nest_opstate(__impl const * __scope, _Sender&& __c, _Rcvr&& __rcvr)
-        : __nest_opstate_base<_Receiver>{{}, __scope, static_cast<_Rcvr&&>(__rcvr)}
+        : __nest_opstate_base<_Receiver>{__scope, static_cast<_Rcvr&&>(__rcvr)}
         , __op_(STDEXEC::connect(static_cast<_Sender&&>(__c), __nest_rcvr_t{this}))
       {}
+
+      STDEXEC_IMMOVABLE(__nest_opstate);
 
       constexpr void start() & noexcept
       {
@@ -238,7 +240,7 @@ namespace experimental::execution
     template <class _Constrained>
     struct __nest_sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <__decays_to<__nest_sender> _Self, receiver _Receiver>
         requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver<_Receiver>>
@@ -538,7 +540,7 @@ namespace experimental::execution
     template <class _Completions, class _Env>
     struct __future_receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       constexpr void __dispatch_result_(std::unique_lock<std::mutex>& __guard) noexcept
       {
@@ -657,7 +659,7 @@ namespace experimental::execution
       using __future_opstate_t = __future_opstate<_Sender, _Env, _Receiver>;
 
      public:
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       __future(__future&&)                    = default;
       auto operator=(__future&&) -> __future& = default;
@@ -724,7 +726,7 @@ namespace experimental::execution
       }
 
       [[nodiscard]]
-      constexpr auto query(get_scheduler_t) const noexcept -> STDEXEC::inline_scheduler
+      constexpr auto query(get_start_scheduler_t) const noexcept -> STDEXEC::inline_scheduler
       {
         return {};
       }
@@ -745,7 +747,7 @@ namespace experimental::execution
     template <class _Env>
     struct __spawn_receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       constexpr void set_value() noexcept
       {
@@ -805,9 +807,10 @@ namespace experimental::execution
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope
-    struct async_scope : __immovable
+    struct async_scope
     {
       async_scope() = default;
+      STDEXEC_IMMOVABLE(async_scope);
 
       template <sender _Constrained>
       [[nodiscard]]

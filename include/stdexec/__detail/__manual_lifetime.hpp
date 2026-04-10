@@ -17,7 +17,6 @@
 #pragma once
 
 #include "__concepts.hpp"
-#include "__utility.hpp"
 
 #include <memory>
 #include <new>
@@ -28,7 +27,7 @@ namespace STDEXEC
   //! Holds storage for a `_Ty`, but allows clients to `__construct(...)`, `__destry()`,
   //! and `__get()` the `_Ty` without regard for usual lifetime rules.
   template <class _Ty>
-  class __manual_lifetime : __immovable
+  class __manual_lifetime
   {
    public:
     //! Constructor does nothing: It's on you to call `__construct(...)` or `__construct_from(...)`
@@ -36,7 +35,9 @@ namespace STDEXEC
     constexpr __manual_lifetime() noexcept = default;
 
     //! Destructor does nothing: It's on you to call `__destroy()` if you mean to.
-    constexpr ~__manual_lifetime() = default;
+    constexpr ~__manual_lifetime() {}
+
+    STDEXEC_IMMOVABLE(__manual_lifetime);
 
     //! Construct the `_Ty` in place.
     //! There are no safeties guarding against the case that there's already one there.
@@ -107,9 +108,12 @@ namespace STDEXEC
 
   template <class _Reference>
     requires std::is_reference_v<_Reference>
-  class __manual_lifetime<_Reference> : __immovable
+  class __manual_lifetime<_Reference>
   {
    public:
+    constexpr __manual_lifetime() noexcept = default;
+    STDEXEC_IMMOVABLE(__manual_lifetime);
+
     constexpr auto __construct(_Reference __ref) noexcept -> _Reference
     {
       __ptr_ = std::addressof(__ref);
@@ -143,8 +147,12 @@ namespace STDEXEC
   };
 
   template <>
-  struct __manual_lifetime<void> : __immovable
+  class __manual_lifetime<void>
   {
+   public:
+    constexpr __manual_lifetime() noexcept = default;
+    STDEXEC_IMMOVABLE(__manual_lifetime);
+
     template <class... _Args>
     constexpr void __construct(_Args&&...) noexcept
     {}

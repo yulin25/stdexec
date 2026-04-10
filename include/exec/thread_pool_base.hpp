@@ -17,8 +17,27 @@
  */
 #pragma once
 
+#include "../stdexec/__detail/__execution_fwd.hpp"
+
+#include "../stdexec/__detail/__connect.hpp"
+#include "../stdexec/__detail/__env.hpp"
+#include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__operation_states.hpp"
+#include "../stdexec/__detail/__receivers.hpp"
+#include "../stdexec/__detail/__schedulers.hpp"
+#include "../stdexec/__detail/__transform_completion_signatures.hpp"
+#include "../stdexec/__detail/__type_traits.hpp"
+
 #include "sender_for.hpp"
 #include "static_thread_pool.hpp"
+
+#include <atomic>
+#include <concepts>
+#include <cstdint>
+#include <exception>
+#include <tuple>
+#include <utility>
+#include <variant>
 
 namespace experimental::execution
 {
@@ -98,7 +117,7 @@ namespace experimental::execution
       class sender
       {
        public:
-        using sender_concept = STDEXEC::sender_t;
+        using sender_concept = STDEXEC::sender_tag;
         template <class Self, class Env>
         static consteval auto get_completion_signatures() noexcept
         {
@@ -269,7 +288,7 @@ namespace experimental::execution
       template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
       struct bulk_receiver
       {
-        using receiver_concept = STDEXEC::receiver_t;
+        using receiver_concept = STDEXEC::receiver_tag;
 
         using shared_state = bulk_shared_state<CvSender, Receiver, Shape, Fun, MayThrow>;
 
@@ -363,7 +382,7 @@ namespace experimental::execution
       template <class Sender, std::integral Shape, class Fun>
       struct bulk_sender
       {
-        using sender_concept = STDEXEC::sender_t;
+        using sender_concept = STDEXEC::sender_tag;
 
         template <class Self, class... Env>
         using _with_error_invoke_t = STDEXEC::__eptr_completion_unless_t<STDEXEC::__value_types_t<

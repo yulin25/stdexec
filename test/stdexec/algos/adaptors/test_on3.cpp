@@ -30,7 +30,7 @@ namespace
   template <class Rcvr>
   struct get_env_rcvr
   {
-    using receiver_concept = ex::receiver_t;
+    using receiver_concept = ex::receiver_tag;
     Rcvr rcvr;
 
     template <class... Values>
@@ -61,7 +61,7 @@ namespace
   template <class Sndr>
   struct get_env_sender
   {
-    using sender_concept = ex::sender_t;
+    using sender_concept = ex::sender_tag;
     Sndr sndr;
 
     template <ex::__decays_to<get_env_sender> Self, ex::receiver Rcvr>
@@ -99,26 +99,29 @@ namespace
 
   static auto const probe_env = probe_env_t{};
 
-  static auto const env = ex::prop{ex::get_scheduler, inline_scheduler{}};
+  static auto const env = ex::prop{ex::get_start_scheduler, inline_scheduler{}};
 
-  TEST_CASE("Can pass STDEXEC::on sender to start_detached", "[adaptors][on]")
+  TEST_CASE("Can pass " STDEXEC_PP_STRINGIZE(STDEXEC) "::on sender to start_detached",
+            "[adaptors][on]")
   {
     exec::start_detached(ex::on(inline_scheduler{}, ex::just()), env);
   }
 
-  TEST_CASE("Can pass STDEXEC::on sender to split", "[adaptors][on]")
+  TEST_CASE("Can pass " STDEXEC_PP_STRINGIZE(STDEXEC) "::on sender to split", "[adaptors][on]")
   {
     auto snd = exec::split(ex::on(inline_scheduler{}, ex::just()), env);
     (void) snd;
   }
 
-  TEST_CASE("Can pass STDEXEC::on sender to ensure_started", "[adaptors][on]")
+  TEST_CASE("Can pass " STDEXEC_PP_STRINGIZE(STDEXEC) "::on sender to ensure_started",
+            "[adaptors][on]")
   {
     auto snd = exec::ensure_started(ex::on(inline_scheduler{}, ex::just()), env);
     (void) snd;
   }
 
-  TEST_CASE("Can pass STDEXEC::on sender to async_scope::spawn", "[adaptors][on]")
+  TEST_CASE("Can pass " STDEXEC_PP_STRINGIZE(STDEXEC) "::on sender to async_scope::spawn",
+            "[adaptors][on]")
   {
     exec::async_scope scope;
     impulse_scheduler sched;
@@ -127,7 +130,8 @@ namespace
     ex::sync_wait(scope.on_empty());
   }
 
-  TEST_CASE("Can pass STDEXEC::on sender to async_scope::spawn_future", "[adaptors][on]")
+  TEST_CASE("Can pass " STDEXEC_PP_STRINGIZE(STDEXEC) "::on sender to async_scope::spawn_future",
+            "[adaptors][on]")
   {
     exec::async_scope scope;
     impulse_scheduler sched;
@@ -140,18 +144,18 @@ namespace
 
   TEST_CASE("STDEXEC::on updates the current scheduler in the receiver", "[adaptors][on]")
   {
-    auto snd = ex::get_scheduler() | ex::on(inline_scheduler{}, probe_env())
+    auto snd = ex::get_start_scheduler() | ex::on(inline_scheduler{}, probe_env())
              | ex::then(
                  []<class Env>(Env) noexcept
                  {
-                   using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
+                   using Sched = ex::__call_result_t<ex::get_start_scheduler_t, Env>;
                    static_assert(std::same_as<Sched, ex::run_loop::scheduler>);
                  })
              | probe_env()
              | ex::then(
                  []<class Env>(Env) noexcept
                  {
-                   using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
+                   using Sched = ex::__call_result_t<ex::get_start_scheduler_t, Env>;
                    static_assert(std::same_as<Sched, ex::run_loop::scheduler>);
                  });
 

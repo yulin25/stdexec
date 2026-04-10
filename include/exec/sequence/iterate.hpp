@@ -20,8 +20,15 @@
 
 #if !STDEXEC_NO_STDCPP_RANGES()
 
+#  include "../../stdexec/__detail/__concepts.hpp"
+#  include "../../stdexec/__detail/__connect.hpp"
+#  include "../../stdexec/__detail/__env.hpp"
+#  include "../../stdexec/__detail/__execution_fwd.hpp"
+#  include "../../stdexec/__detail/__operation_states.hpp"
 #  include "../../stdexec/__detail/__optional.hpp"
-#  include "../../stdexec/execution.hpp"
+#  include "../../stdexec/__detail/__receivers.hpp"
+#  include "../../stdexec/__detail/__schedulers.hpp"
+#  include "../../stdexec/__detail/__sender_concepts.hpp"
 
 #  include "../detail/basic_sequence.hpp"
 #  include "../sender_for.hpp"
@@ -77,7 +84,7 @@ namespace experimental::execution
     template <class _Iterator, class _Sentinel>
     struct __sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
       using completion_signatures =
         STDEXEC::completion_signatures<set_value_t(std::iter_reference_t<_Iterator>)>;
 
@@ -94,7 +101,7 @@ namespace experimental::execution
     template <class _Iterator, class _Sentinel, class _Receiver>
     struct __next_receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       constexpr void set_value() noexcept
       {

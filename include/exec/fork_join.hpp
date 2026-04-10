@@ -93,12 +93,12 @@ namespace experimental::execution
     template <class Variant, class Domain>
     struct _cache_sndr_t
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <class Rcvr>
       struct _opstate_t
       {
-        using operation_state_concept = STDEXEC::operation_state_t;
+        using operation_state_concept = STDEXEC::operation_state_tag;
 
         STDEXEC_ATTRIBUTE(host, device) void start() noexcept
         {
@@ -140,16 +140,16 @@ namespace experimental::execution
     template <class Sndr, class Closures, class Rcvr>
     struct _opstate_t
     {
-      using operation_state_concept = STDEXEC::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_tag;
       using _env_t                  = STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Rcvr>>;
       using _child_completions_t    = STDEXEC::__completion_signatures_of_t<Sndr, _env_t>;
       using _domain_t = STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, Sndr, _env_t>;
       using _when_all_sndr_t =
         fork_join_impl_t::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
       using _child_opstate_t =
-        STDEXEC::connect_result_t<Sndr, STDEXEC::__rcvr_ref_t<_opstate_t, _env_t>>;
+        STDEXEC::connect_result_t<Sndr, STDEXEC::__receiver_ref<_opstate_t, _env_t>>;
       using _fork_opstate_t =
-        STDEXEC::connect_result_t<_when_all_sndr_t, STDEXEC::__rcvr_ref_t<Rcvr>>;
+        STDEXEC::connect_result_t<_when_all_sndr_t, STDEXEC::__receiver_ref<Rcvr>>;
       using _cache_sndr_t =
         fork_join_impl_t::_cache_sndr_t<_variant_t<_child_completions_t>, _domain_t>;
 
@@ -159,11 +159,11 @@ namespace experimental::execution
         , _fork_opstate_(STDEXEC::connect(STDEXEC::__apply(_mk_when_all_fn{},
                                                            static_cast<Closures&&>(closures),
                                                            _cache_sndr_t{&_cache_}),
-                                          STDEXEC::__ref_rcvr(_rcvr_)))
+                                          STDEXEC::__receiver_ref(_rcvr_)))
       {
         _child_opstate_.__construct_from(STDEXEC::connect,
                                          static_cast<Sndr&&>(sndr),
-                                         STDEXEC::__ref_rcvr(*this));
+                                         STDEXEC::__receiver_ref(*this));
       }
 
       STDEXEC_IMMOVABLE(_opstate_t);

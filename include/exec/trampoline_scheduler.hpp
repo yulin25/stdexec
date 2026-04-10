@@ -16,7 +16,14 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__execution_fwd.hpp"
+
+#include "../stdexec/__detail/__concepts.hpp"
+#include "../stdexec/__detail/__domain.hpp"
+#include "../stdexec/__detail/__env.hpp"
+#include "../stdexec/__detail/__receivers.hpp"
+#include "../stdexec/stop_token.hpp"
+
 #include "completion_behavior.hpp"
 
 #include <cstddef>
@@ -63,11 +70,12 @@ namespace experimental::execution
 
     struct __attrs
     {
-      template <__one_of<set_value_t, set_stopped_t> _Tag, __queryable_with<get_scheduler_t> _Env>
+      template <__one_of<set_value_t, set_stopped_t>    _Tag,
+                __queryable_with<get_start_scheduler_t> _Env>
       [[nodiscard]]
       constexpr auto query(get_completion_scheduler_t<_Tag>, _Env const & __env) const noexcept
       {
-        return get_scheduler(__env);
+        return get_start_scheduler(__env);
       }
 
       template <__one_of<set_value_t, set_stopped_t> _Tag, __queryable_with<get_domain_t> _Env>
@@ -218,7 +226,7 @@ namespace experimental::execution
 
       struct __sender
       {
-        using sender_concept = STDEXEC::sender_t;
+        using sender_concept = STDEXEC::sender_tag;
 
         constexpr explicit __sender(std::size_t __max_size, std::size_t __max_depth) noexcept
           : __max_recursion_size_(__max_size)

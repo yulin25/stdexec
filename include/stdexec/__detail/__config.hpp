@@ -174,10 +174,20 @@
 #endif
 
 STDEXEC_NAMESPACE_STD_BEGIN
-  namespace execution::system_context_replaceability
-  {}
+  namespace execution
+  {
+    namespace parallel_scheduler_replacement
+    { }
+
+    namespace [[deprecated("Use the std::execution::parallel_scheduler_replacement namespace "
+                           "instead.")]] system_context_replaceability
+    {
+      using namespace parallel_scheduler_replacement;
+    }  // namespace system_context_replaceability
+  }  // namespace execution
+
   namespace this_thread
-  {}
+  { }
 STDEXEC_NAMESPACE_STD_END
 
 #if !defined(STDEXEC_NAMESPACE)
@@ -304,7 +314,7 @@ namespace STDEXEC::__std
 #  define STDEXEC_ATTR_WHICH_4(_ATTR) __forceinline
 #elif STDEXEC_CLANG()
 #  define STDEXEC_ATTR_WHICH_4(_ATTR)                                                              \
-    __attribute__((__always_inline__, __artificial__, __nodebug__)) inline
+    inline //__attribute__((__always_inline__, __artificial__, __nodebug__)) inline
 #elif STDEXEC_GCC()
 #  define STDEXEC_ATTR_WHICH_4(_ATTR) __attribute__((__always_inline__, __artificial__)) inline
 #else
@@ -395,8 +405,8 @@ namespace STDEXEC::__std
 #endif
 
 #if STDEXEC_MSVC()
-#  define STDEXEC_PRAGMA_OPTIMIZE_BEGIN()  STDEXEC_PRAGMA(optimize("", on))
-#  define STDEXEC_PRAGMA_OPTIMIZE_END()    STDEXEC_PRAGMA(optimize("", off))
+#  define STDEXEC_PRAGMA_OPTIMIZE_BEGIN()  STDEXEC_PRAGMA(optimize("t", on))
+#  define STDEXEC_PRAGMA_OPTIMIZE_END()    STDEXEC_PRAGMA(optimize("", on))
 #else
 #  define STDEXEC_PRAGMA_OPTIMIZE_BEGIN()  STDEXEC_PRAGMA(GCC push_options) \
                                            STDEXEC_PRAGMA(GCC optimize("O3"))
@@ -528,8 +538,8 @@ namespace STDEXEC
 #  define STDEXEC_UNREACHABLE(...) std::terminate()
 #endif
 
-// Before gcc-12, gcc really didn't like tuples or variants of immovable types
-#if STDEXEC_GCC() && (STDEXEC_GCC_VERSION < 1200)
+// gcc struggles with copy-elision of immovable types
+#if STDEXEC_GCC()
 #  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
 #else
 #  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
@@ -895,4 +905,4 @@ namespace STDEXEC
 #endif
 
 namespace STDEXEC
-{}
+{ }

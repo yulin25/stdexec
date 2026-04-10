@@ -60,7 +60,6 @@ namespace STDEXEC
   struct __immovable
   {
     __immovable() = default;
-   private:
     STDEXEC_IMMOVABLE(__immovable);
   };
 
@@ -254,18 +253,6 @@ namespace STDEXEC
 #endif
 
   //////////////////////////////////////////////////////////////////////////////////////////
-  // _move_if
-  template <bool Move, class _Ty>
-  STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-  constexpr auto&& __move_if(_Ty& t) noexcept
-  {
-    if constexpr (Move)
-      return std::move(t);
-    else
-      return t;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////////////////
   // __unconst
   template <class T>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline)
@@ -304,6 +291,16 @@ namespace STDEXEC
     }
 #endif
     return static_cast<__value_type*>(__from_ptr);
+  }
+
+  template <bool _DoMove, class _Ty>
+  [[nodiscard]]
+  inline constexpr auto __maybe_move(_Ty& t) noexcept -> decltype(auto)
+  {
+    if constexpr (_DoMove)
+      return static_cast<_Ty&&>(t);
+    else
+      return t;
   }
 
   namespace __std

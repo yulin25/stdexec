@@ -28,7 +28,7 @@ AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: Yes
 AttributeMacros: [
-  STDEXEC_SYSTEM_CONTEXT_INLINE
+  STDEXEC_PARALLEL_SCHEDULER_INLINE
   STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 ]
 BinPackArguments: false
@@ -71,7 +71,9 @@ EmptyLineAfterAccessModifier: Never
 EmptyLineBeforeAccessModifier: Leave
 FixNamespaceComments: true
 IfMacros: [
-  'STDEXEC_CATCH'
+  'STDEXEC_CATCH',
+  'STDEXEC_IF_CONSTEVAL',
+  'STDEXEC_IF_NOT_CONSTEVAL'
 ]
 IncludeBlocks: Preserve
 IndentAccessModifiers: false

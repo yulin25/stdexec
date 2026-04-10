@@ -42,7 +42,7 @@ namespace STDEXEC
 {
   class task_scheduler;
 
-  namespace system_context_replaceability
+  namespace parallel_scheduler_replacement
   {
     /// Interface for completing a sender operation. Backend will call frontend though
     /// this interface for completing the `schedule` and `schedule_bulk` operations.
@@ -131,6 +131,13 @@ namespace STDEXEC
 
     struct parallel_scheduler_backend : __any::__iabstract<__iparallel_scheduler_backend>
     {};
+  }  // namespace parallel_scheduler_replacement
+
+  namespace [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC) "::parallel_scheduler_replacement "
+                                                              "instead.")]]  //
+  system_context_replaceability
+  {
+    using namespace parallel_scheduler_replacement;
   }  // namespace system_context_replaceability
 
   namespace __detail
@@ -188,7 +195,7 @@ namespace STDEXEC
       , __stop_callback_for<stop_token_of_t<env_of_t<_Rcvr>>>
     {
      public:
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
       using __stop_token_t   = stop_token_of_t<env_of_t<_Rcvr>>;
       using __allocator_t    = std::allocator_traits<
            __call_result_or_t<get_allocator_t,
@@ -251,9 +258,9 @@ namespace STDEXEC
         {
           __query(get_allocator, __value, __dest);
         }
-        else if (__query_id == __mtypeid<get_scheduler_t>)
+        else if (__query_id == __mtypeid<get_start_scheduler_t>)
         {
-          __query(get_scheduler, __value, __dest);
+          __query(get_start_scheduler, __value, __dest);
         }
       }
 
@@ -310,7 +317,7 @@ namespace STDEXEC
       }
 
       // Defined in __task_scheduler.hpp
-      constexpr void __query(get_scheduler_t, __type_index, void*) const noexcept;
+      constexpr void __query(get_start_scheduler_t, __type_index, void*) const noexcept;
 
      public:
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -319,7 +326,7 @@ namespace STDEXEC
 
     template <class _Rcvr, bool _Infallible = false>
     struct __receiver_proxy
-      : __receiver_proxy_base<_Rcvr, system_context_replaceability::receiver_proxy, _Infallible>
+      : __receiver_proxy_base<_Rcvr, parallel_scheduler_replacement::receiver_proxy, _Infallible>
     {
       using __receiver_proxy::__receiver_proxy_base::__receiver_proxy_base;
 
@@ -349,13 +356,13 @@ namespace STDEXEC
       // A template because task_scheduler is not a complete type yet.
       template <class _TaskScheduler = task_scheduler>
       [[nodiscard]]
-      auto query(get_scheduler_t) const noexcept -> _TaskScheduler
+      auto query(get_start_scheduler_t) const noexcept -> _TaskScheduler
       {
-        auto __sched = __rcvr_.template try_query<_TaskScheduler>(get_scheduler);
+        auto __sched = __rcvr_.template try_query<_TaskScheduler>(get_start_scheduler);
         return __sched ? *__sched : _TaskScheduler(inline_scheduler{});
       }
 
-      system_context_replaceability::receiver_proxy& __rcvr_;
+      parallel_scheduler_replacement::receiver_proxy& __rcvr_;
     };
 
     // A receiver type that forwards its completion operations to a _RcvrProxy member held
@@ -365,7 +372,7 @@ namespace STDEXEC
     template <class _RcvrProxy, class _Env>
     struct __proxy_receiver
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
       using __delete_fn_t    = void(void*) noexcept;
 
       constexpr void set_value() noexcept

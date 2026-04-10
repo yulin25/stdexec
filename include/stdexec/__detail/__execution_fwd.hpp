@@ -15,8 +15,9 @@
  */
 #pragma once
 
-#include "__concepts.hpp"
 #include "__config.hpp"  // IWYU pragma: export
+
+#include "__concepts.hpp"
 #include "__meta.hpp"
 #include "__type_traits.hpp"
 #include "__utility.hpp"
@@ -109,6 +110,7 @@ namespace STDEXEC
   struct __execute_may_block_caller_t;
   struct get_forward_progress_guarantee_t;
   struct get_scheduler_t;
+  struct get_start_scheduler_t;
   struct get_delegation_scheduler_t;
   template <__completion_tag _CPO>
   struct get_completion_scheduler_t;
@@ -124,6 +126,7 @@ namespace STDEXEC
   extern __execute_may_block_caller_t const     __execute_may_block_caller;
   extern get_forward_progress_guarantee_t const get_forward_progress_guarantee;
   extern get_scheduler_t const                  get_scheduler;
+  extern get_start_scheduler_t const            get_start_scheduler;
   extern get_delegation_scheduler_t const       get_delegation_scheduler;
   template <__completion_tag _CPO>
   extern get_completion_scheduler_t<_CPO> const get_completion_scheduler;
@@ -143,10 +146,16 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // concept tag types:
-  struct sender_t;
-  struct operation_state_t;
-  struct scheduler_t;
-  struct receiver_t;
+  struct sender_tag;
+  struct operation_state_tag;
+  struct scheduler_tag;
+  struct receiver_tag;
+
+  // concept tag aliases for backwards compatibility:
+  using sender_t          = sender_tag;
+  using operation_state_t = operation_state_tag;
+  using scheduler_t       = scheduler_tag;
+  using receiver_t        = receiver_tag;
 
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
@@ -290,8 +299,8 @@ namespace STDEXEC
   extern on_t const on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  struct affine_on_t;
-  extern affine_on_t const affine_on;
+  struct affine_t;
+  extern affine_t const affine;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct stopped_as_error_t;

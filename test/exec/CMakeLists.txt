@@ -73,6 +73,10 @@ set(exec_test_sources
     test_nest_scopes.cpp
     )
 
+set_source_files_properties(test_any_sender.cpp
+    PROPERTIES
+    COMPILE_FLAGS $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
+
 add_executable(test.exec ${exec_test_sources})
 target_link_libraries(test.exec
     PUBLIC
@@ -83,7 +87,7 @@ target_link_libraries(test.exec
     common_test_settings)
 
 # Discover the Catch2 test built by the application
-catch_discover_tests(test.exec)
+catch_discover_tests(test.exec PROPERTIES TIMEOUT 30)
 
 if(STDEXEC_ENABLE_ASIO)
     add_subdirectory(asio)

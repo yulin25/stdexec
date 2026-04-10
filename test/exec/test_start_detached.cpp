@@ -101,7 +101,7 @@ namespace
 
   struct custom_sender
   {
-    using sender_concept        = ex::sender_t;
+    using sender_concept        = ex::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
     bool* called;
 
@@ -138,7 +138,7 @@ namespace
   {
     struct sender
     {
-      using sender_concept        = ex::sender_t;
+      using sender_concept        = ex::sender_tag;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       [[nodiscard]]
@@ -167,7 +167,7 @@ namespace
       template <class Sender, class Env>
       void apply_sender(exec::start_detached_t, Sender, Env const & env) const
       {
-        custom_scheduler sched = ex::get_scheduler(env);
+        custom_scheduler sched = ex::get_start_scheduler(env);
         *sched.called          = true;
       }
     };
@@ -215,7 +215,7 @@ namespace
   TEST_CASE("start_detached can be customized on scheduler", "[consumers][start_detached]")
   {
     bool called = false;
-    exec::start_detached(ex::just(), ex::prop{ex::get_scheduler, custom_scheduler{&called}});
+    exec::start_detached(ex::just(), ex::prop{ex::get_start_scheduler, custom_scheduler{&called}});
     CHECK(called);
   }
 
@@ -278,7 +278,7 @@ namespace
   {
     ex::run_loop loop;
     auto         sch = loop.get_scheduler();
-    auto         snd = ex::get_scheduler()
+    auto         snd = ex::get_start_scheduler()
              | ex::let_value(
                  [](auto sched)
                  {
@@ -297,7 +297,7 @@ namespace
   {
     ex::run_loop loop;
     auto         sch = loop.get_scheduler();
-    auto         snd = ex::get_scheduler()
+    auto         snd = ex::get_start_scheduler()
              | ex::let_value(
                  [](auto sched)
                  {
