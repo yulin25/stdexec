@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
@@ -22,7 +22,7 @@
 namespace
 {
 
-#if !STDEXEC_GCC() || STDEXEC_GCC_VERSION >= 12'00
+#if !STDEXEC_GCC() || STDEXEC_GCC_VERSION >= 1200
   constexpr int test_constexpr() noexcept
   {
     struct receiver

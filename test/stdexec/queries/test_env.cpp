@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <stdexec/execution.hpp>
 
 namespace ex = STDEXEC;
@@ -111,7 +111,7 @@ namespace
 
   // Before v19, clang could not compile this test because of the large number of nested
   // envs.
-#if !STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 19'00
+#if !STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 1900
 
 #  define DEFINE_QUERY(name) constexpr struct name ## _t : ex::__query<name ## _t> {} name{}
 

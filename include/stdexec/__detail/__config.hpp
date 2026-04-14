@@ -225,6 +225,7 @@ STDEXEC_NAMESPACE_STD_END
 #endif
 // clang-format on
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
 #if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
 #  include <coroutine>  // IWYU pragma: keep
 #  define STDEXEC_NO_STDCPP_COROUTINES() 0
@@ -285,7 +286,7 @@ namespace STDEXEC::__std
 
 #if STDEXEC_NVHPC()
 // NVBUG #4067067: NVHPC does not fully support [[no_unique_address]]
-#  if STDEXEC_NVHPC_VERSION < 23'05
+#  if STDEXEC_NVHPC_VERSION < 2305
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
 #  else
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) [[no_unique_address]]
@@ -300,7 +301,7 @@ namespace STDEXEC::__std
 #  endif
 #elif STDEXEC_MSVC()
 // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-codegen-when-using-msvc::no_/10452874
-#  if STDEXEC_MSVC_VERSION < 19'43
+#  if STDEXEC_MSVC_VERSION < 1943
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
 #  else
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) [[msvc::no_unique_address]]

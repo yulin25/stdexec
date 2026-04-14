@@ -54,7 +54,7 @@ target_include_directories(test.nvexec PRIVATE ${CMAKE_CURRENT_LIST_DIR}/..)
 target_link_libraries(test.nvexec
                       STDEXEC::nvexec
                       stdexec_executable_flags
-                      Catch2::Catch2
+                      Catch2::Catch2WithMain
                       nvexec_executable_flags)
 
 # if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
@@ -62,3 +62,17 @@ target_link_libraries(test.nvexec
 # endif()
 
 catch_discover_tests(test.nvexec PROPERTIES TIMEOUT 30)
+
+icm_add_build_failure_test(
+    NAME when_all_fail
+    TARGET when_all_fail
+    SOURCES PARSE when_all_fail.cpp
+    LIBRARIES stdexec nvexec
+    FOLDER test
+)
+set_target_properties(when_all_fail
+    PROPERTIES
+        LANGUAGE CUDA
+        LINKER_LANGUAGE CUDA)
+target_compile_options(when_all_fail PRIVATE
+    $<$<CXX_COMPILER_ID:Clang>:-x cuda>)

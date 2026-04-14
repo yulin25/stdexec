@@ -14,6 +14,12 @@
 # limitations under the License.
 #=============================================================================
 
+function(add_compile_diagnostics TARGET)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+        target_compile_options(${TARGET} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+endfunction()
+
 set(stdexec_test_sources
     test_main.cpp
     stdexec/cpos/test_cpo_bulk.cpp
@@ -64,6 +70,7 @@ set(stdexec_test_sources
     stdexec/algos/consumers/test_sync_wait.cpp
     stdexec/algos/consumers/test_spawn.cpp
     stdexec/detail/test_any.cpp
+    stdexec/detail/test_common_domain.cpp
     stdexec/detail/test_completion_signatures.cpp
     stdexec/detail/test_demangle.cpp
     stdexec/detail/test_utility.cpp
@@ -86,10 +93,14 @@ set_target_properties(common_test_settings PROPERTIES
     MSVC_DEBUG_INFORMATION_FORMAT Embedded
     )
 target_include_directories(common_test_settings INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
-target_compile_definitions(common_test_settings INTERFACE STDEXEC_NAMESPACE=std::execution)
+target_compile_definitions(common_test_settings INTERFACE
+    STDEXEC_NAMESPACE=std::execution
+    $<$<PLATFORM_ID:Windows>:NOMINMAX>
+    )
 target_compile_options(common_test_settings INTERFACE
     $<$<CXX_COMPILER_ID:MSVC>:/wd4714> # function marked as __forceinline not inlined
     $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted from stdlib headers, why?
+    $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>
     )
 target_link_libraries(common_test_settings INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 # target_compile_definitions(
@@ -97,11 +108,12 @@ target_link_libraries(common_test_settings INTERFACE $<TARGET_NAME_IF_EXISTS:TBB
 #     $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
 
 add_executable(test.stdexec ${stdexec_test_sources})
+add_compile_diagnostics(test.stdexec)
 target_link_libraries(test.stdexec
     PUBLIC
     STDEXEC::stdexec
     stdexec_executable_flags
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     PRIVATE
     common_test_settings)
 
@@ -109,28 +121,30 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
   add_executable(test.parallel_scheduler_replacement
                  test_main.cpp
                  stdexec/schedulers/test_parallel_scheduler_replacement.cpp)
+  add_compile_diagnostics(test.parallel_scheduler_replacement)
   target_link_libraries(test.parallel_scheduler_replacement
       PUBLIC
       STDEXEC::stdexec
       STDEXEC::parallel_scheduler
       stdexec_executable_flags
-      Catch2::Catch2
+      Catch2::Catch2WithMain
       PRIVATE
       common_test_settings)
 endif()
 
 add_executable(test.scratch test_main.cpp test_scratch.cpp)
+add_compile_diagnostics(test.scratch)
 target_link_libraries(test.scratch
     PUBLIC
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
     stdexec_executable_flags
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     PRIVATE
     common_test_settings)
 
 # Discover the Catch2 test built by the application
-include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
+include(${Catch2_SOURCE_DIR}/extras/Catch.cmake)
 
 # For testing that builds fail as expected
 include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)

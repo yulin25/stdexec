@@ -175,7 +175,7 @@ namespace STDEXEC
     }
   };
 
-#endif  // __cpp_lib_constexpr_exceptions >= 2025'02L
+#endif  // __cpp_lib_constexpr_exceptions >= 202502L
 
   template <class _Derived>
   struct __compile_time_error : __exception

@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2021-2024 NVIDIA Corporation
+ *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -12,25 +14,22 @@
  * limitations under the License.
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdexec/execution.hpp>
-#include <test_common/type_helpers.hpp>
 
-#include <memory>
+#include <exec/single_thread_context.hpp>
+#include <nvexec/stream_context.cuh>
 
 namespace ex = STDEXEC;
 
-namespace
+auto main() -> int
 {
+  nvexec::stream_context      stream_ctx{};
+  exec::single_thread_context thread_ctx{};
 
-  TEST_CASE("read returns empty env", "[factories][read]")
-  {
-    auto sndr  = ex::read_env(ex::get_allocator);
-    using Sndr = decltype(sndr);
-    using Env  = ex::prop<ex::get_allocator_t, std::allocator<int>>;
-    static_assert(ex::sender<Sndr>);
-    static_assert(!ex::sender_in<Sndr>);
-    static_assert(ex::sender_in<Sndr, Env>);
-    static_assert(ex::__completes_inline<ex::set_value_t, ex::env_of_t<Sndr>, Env>);
-  }
-}  // namespace
+  auto sndr = ex::when_all(ex::schedule(stream_ctx.get_scheduler()),
+                           ex::schedule(thread_ctx.get_scheduler()))
+            | ex::continues_on(thread_ctx.get_scheduler());
+
+  // build error: ERROR: indeterminate domains: cannot pick an algorithm customization
+  ex::sync_wait(std::move(sndr));
+}
